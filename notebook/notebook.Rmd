@@ -1,0 +1,51 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(ggplot2)
+notebook_list = read.csv('naver_shopping_notebook.csv', sep=",", stringsAsFactors = FALSE)
+
+as_numeric <- function(data) {
+  return (as.numeric(gsub(',', '', data)))
+}
+
+price_min = as.numeric(gsub(',', '', notebook_list$price_min)) / 1000
+target = data.frame(notebook_list$name, price_min)
+
+plot(target$price_min)
+ggplot(data=target, aes(x=price_min)) + geom_histogram()
+
+screen_size = as_numeric(notebook_list$screen_size_cm)
+boxplot(screen_size)
+
+core_price = data.frame(as.factor(notebook_list$series), as_numeric(notebook_list$price_min) / 10000)
+names(core_price) <- c('series', 'price_min')
+plot(core_price)
+ggplot(data=core_price, aes(x=series, fill=series)) + geom_bar()
+ggplot(data=core_price, aes(x=price_min, y=series, color=series)) + geom_boxplot()
+
+summary(core_price$series)
+plot(core_price$series)
+
+qplot(core_price$price_min, geom='density', color=core_price$series, fill=core_price$series, alpha=I(0.5))
+
+# subset() a factor by its number of observation
+core_price_table <- table(core_price$series)
+plot(core_price_table)
+str(core_price_table)
+core_price_table[core_price$series]
+
+table(core_price$series)[core_price$series] > 20
+core_price_over_20 <- subset(core_price, table(core_price$series)[core_price$series] > 20)
+
+
+qplot(core_price_over_20$price_min, geom='density', color=core_price_over_20$series, fill=core_price_over_20$series, alpha=I(0.5))
+
+```
+
+```{r}
+
+```
+

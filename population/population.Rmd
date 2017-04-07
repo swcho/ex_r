@@ -1,0 +1,52 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Vector handling
+```{r}
+v1 <- c('a', 'b', 'c', 'd')
+v1
+v1[2]
+v1[2:3]
+v1[2:length(v1)]
+v2 <-c(v1[4], v1[2:3])
+v2
+```
+
+# Handling raw data
+```{r}
+df = read.csv('pop.csv', sep=",", stringsAsFactors = FALSE)
+kk = as.numeric(gsub(',', '', df[1,2:62]))
+x = 10:70
+plot(x, kk, type='l')
+plot(x, kk, type='b')
+```
+
+
+```{r}
+df = read.csv('pop.csv', sep=",", stringsAsFactors = FALSE)
+Region = df[1]
+class(Region)
+Region
+
+df_people = df[2:length(df)]
+class(df_people)
+test_v = c()
+df.people = lapply(df_people, function(v) {
+  test_v = v
+  str(v)
+  as.numeric(gsub(',', '', v))
+})
+class(df.people)
+
+names(df_people)
+plot(df.people)
+
+kk = as.numeric(gsub(',', '', df[,2:62]))
+x = 10:70
+plot(x, kk, type='l')
+plot(x, kk, type='b')
+
+```
+

@@ -1,0 +1,171 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Orange
+```{r}
+data(Orange)
+# Orange
+# plot(Orange)
+# typeof(Orange)
+plot(age~circumference, data=Orange)
+# plot(Orange$circumference, Orange$age)
+lm_result = lm(age~circumference, data=Orange)
+typeof(lm_result)
+
+?abline
+
+abline(lm(age~circumference, data=Orange), col='blue')
+lines(loess.smooth(Orange$circumference, Orange$age), col='red')
+```
+
+Demo
+```{r}
+demo(graphics)
+```
+
+ggplot2 install
+```{r}
+install.packages('ggplot2')
+library(ggplot2)
+```
+
+ggplot2
+```{r}
+# Reading data
+data(Orange)
+Orange$circumference
+
+qplot(circumference , age, data=Orange)
+abline(lm(age~circumference, data=Orange), col='blue')
+lines(loess.smooth(Orange$circumference, Orange$age), col='red')
+```
+
+qplot with filtering
+```{r}
+qplot(circumference, age, data=Orange[Orange$Tree==1,], geom='line')
+qplot(circumference, age, data=Orange[Orange$Tree==1,], geom=c('line', 'point'))
+```
+
+Boxplot
+```{r}
+boxplot(circumference~Tree, data=Orange)
+qplot(Tree, circumference, data=Orange, geom='boxplot')
+```
+
+Boxplot with individual observations
+```{r}
+boxplot(circumference~Tree, data=Orange)
+points(circumference~Tree, data=Orange)
+qplot(Tree, circumference, data=Orange, geom=c('boxplot', 'point'))
+```
+
+Histogram of the orange dataset
+```{r}
+hist(Orange$circumference)
+qplot(circumference, data=Orange, geom='histogram')
+```
+
+Histogram with the reference line at the median value in red
+```{r}
+hist(Orange$circumference)
+abline(v=median(Orange$circumference), col='red')
+
+#ggplot
+qplot(circumference, data=Orange, geom='histogram') + geom_vline(xintercept = median(Orange$circumference), colour='red')
+```
+
+Lattice and Trellis plots
+```{r}
+require(lattice)
+myPanel <- function(x, y) {
+  panel.xyplot(x, y);
+  panel.lmline(x, y, col='blue')
+  panel.loess(x, y, col='red')
+}
+xyplot(age~circumference, data=Orange, panel=myPanel)
+```
+
+```{r}
+myPanel <- function(x, y) {
+  panel.xyplot(x, y, type='b') # the observations
+}
+xyplot(age~circumference | Tree, data=Orange, panel=myPanel);
+```
+
+## Scatterplots with individual observations
+```{r}
+xyplot(age~circumference, data=Orange)
+```
+```{r}
+qplot(circumference, age, data=Orange)
+```
+
+## Scatterplots of the orange dataset with faceting
+```{r}
+xyplot(age~circumference | Tree, data=Orange)
+```
+```{r}
+qplot(circumference, age, data=Orange, facets=~Tree)
+```
+
+## Faceting scatterplots with line and points
+```{r}
+xyplot(age~circumference | Tree, data=Orange, type='b')
+```
+```{r}
+qplot(circumference, age, data=Orange, geom=c('line', 'point'), facets=~Tree)
+```
+
+## Scatterplots with grouping data
+```{r}
+xyplot(age~circumference, data=Orange, groups=Tree, type='b')
+```
+```{r}
+qplot(circumference, age, data=Orange, color=Tree, geom=c('line', 'point'))
+```
+
+## Boxplots of the orange dataset
+```{r}
+bwplot(circumference~Tree, data=Orange)
+```
+```{r}
+qplot(Tree, circumference, data=Orange, geom='boxplot')
+```
+
+## Histograms of the orange dataset
+```{r}
+histogram(Orange$circumference, type='count')
+```
+```{r}
+qplot(circumference, data=Orange, geom='histogram')
+```
+
+## Histograms with the reference line at the median value in red
+```{r}
+histogram(~circumference, data=Orange, type='count', panel=function(x, ...){
+  panel.histogram(x, ...);
+  panel.abline(v=median(x), col='red')
+})
+```
+```{r}
+qplot(circumference, data=Orange, geom='histogram') + 
+  geom_vline(xintercept = median(Orange$circumference), colour='red')
+```
+
+## ggplot2 and the grammar of graphics
+
+```{r}
+require(ggplot2)
+data(Orange)
+
+ggplot(data=Orange, aes(x=circumference, y=age, color=Tree)) +
+  geom_point() +
+  stat_smooth(method='lm', se=FALSE)
+```
+
+```{r}
+qplot(circumference, age, data=Orange, color=Tree, geom=c('point', 'smooth'), method='lm', se=FALSE)
+```
+

@@ -1,0 +1,152 @@
+---
+title: "ggplot2 cookbook"
+output: html_notebook
+---
+
+# Getting Started
+
+## Histograms and density attributes (1 value, 1 grouping)
+```{r}
+## head(iris)
+qplot(iris$Petal.Length, geom='histogram', color=iris$Species, fill=iris$Species, alpha=I(0.5))
+qplot(iris$Petal.Length, geom='density', color=iris$Species, fill=iris$Species, alpha=I(0.5))
+```
+
+## Bar charts (factor/count, grouping)
+```{r}
+# install.packages("ggplot2movies")
+require(ggplot2)
+require(ggplot2movies)
+# data(package='ggplot2')
+# data(package='ggplot2movies')
+# data(movies)
+# head(movies)The Garden of Words.2013.1080p.BDRip.x265.AC3-HDione.mkvThe Garden of Words.2013.1080p.BDRip.x265.AC3-HDione.mkv
+# nrow(movies)
+
+# https://stat.ethz.ch/pipermail/r-help/2011-March/272790.html
+test <- 'Action'
+head(movies[test])
+head(movies[[test]])
+
+budgetByType <- function(type) {
+  ret <- data.frame(movies[movies[[type]]==1, c('budget', 'Short', 'year')])
+  ret$Type = type
+  return(ret)
+}
+
+budgetByType('Action')
+
+d1 <- data.frame(movies[movies$Action==1, c('budget', 'Short', 'year')])
+d1$Type = 'Action'
+d2 <- data.frame(movies[movies$Animation==1, c('budget', 'Short', 'year')])
+d2$Type = 'Animation'
+nrow(d1)
+nrow(d2)
+
+d3 <- budgetByType('Comedy')
+d4 <- budgetByType('Drama')
+d5 <- budgetByType('Documentary')
+d6 <- budgetByType('Romance')
+
+myMovieData <- rbind(d1, d2, d3, d4, d5, d6)
+
+typeof(myMovieData$Type)
+class(myMovieData$Type)
+qplot(Type, data=myMovieData, geom='bar', fill=Type)
+
+```
+
+```{r}
+qplot(Type, data=myMovieData, geom='bar', fill=factor(year))
+class(factor(myMovieData$Short))
+class(myMovieData$Short)
+class(myMovieData$Type)
+qplot(Type, data=myMovieData, geom='bar', fill=factor(Short))
+```
+As you probably noticed in this last example, we assigned the Short variable to the
+fill argument, but in the assignment, we also converted the variable to factor,
+while in the previous example, when we used the Type variable, we did not do
+so. The reason is that the fill aesthetic attribute, in this case, needed a discrete
+variable, which defined different levels. These, in turn, were assigned to different
+colors. The Type variable of the previous example was already a factor, where each
+level represented the movie type. On the other hand, the Short variable is actually
+numeric: 0 for regular movies and 1 for short movies. For this reason, we had to
+convert it first to a factor, so qplot could identify this variable as indicating two
+levels of a discrete variable.
+
+```{r}
+qplot(Type, data=myMovieData, geom='bar', fill=factor(Short), position='stack')
+ggplot(data=myMovieData, aes(x=Type, colour=Type, fill=factor(Short))) +
+  geom_bar(position='dodge')
+```
+
+```{r}
+qplot(Type, data=myMovieData, fill=factor(Short), postion='dodge')
+ggplot(data=myMovieData, aes(x=Type, fill=factor(Short))) +
+  geom_bar(position='dodge')
+```
+
+```{r}
+qplot(Type, data=myMovieData, fill=factor(Short), position='fill')
+ggplot(data=myMovieData, aes(x=Type, fill=factor(Short))) +
+  geom_bar(position = 'fill')
+```
+
+## Boxplots (value/factor)
+```{r}
+qplot(Type, budget, data=myMovieData, geom='boxplot')
+
+# plot with NA removed
+qplot(Type, budget, data=myMovieData[!is.na(myMovieData$budget),], geom='boxplot')
+
+```
+
+```{r}
+ggplot(data=myMovieData, aes(x=Type, y=budget, fill=Type)) + geom_boxplot()
+```
+
+Budget with log
+```{r}
+ggplot(data=myMovieData, aes(x=Type, y=log(budget), fill=Type)) + geom_boxplot()
+```
+
+```{r}
+qplot(Type, budget, data=myMovieData, geom=c('boxplot', 'point'), log='y')
+```
+
+```{r}
+qplot(Type, budget, data=myMovieData, geom=c('jitter', 'boxplot'), alpha=I(0.6), log='y')
+```
+
+## Scatterplots (value/value, value/factor, grouping)
+```{r}
+qplot(dose, len, data=ToothGrowth, geom='point')
+## Alternative coding
+qplot(dose, len, data=ToothGrowth, col=supp)
+```
+```{r}
+qplot(dose, len, data=ToothGrowth, geom='point', facets=.~supp)
+```
+
+Show tendency
+```{r}
+qplot(dose, len, data=ToothGrowth, geom=c('point', 'smooth'), facets = .~supp)
+```
+
+## Time series (value/date)
+```{r}
+head(economics)
+```
+```{r}
+#install.packages('plotly')
+library(plotly)
+p <- qplot(date, unemploy, data=economics, geom='line')
+ggplotly(p)
+
+```
+
+## Buggle charts and dot plots (factor/date~value)
+```{r}
+qplot(year, Type, data=myMovieData, size=budget)
+```
+
