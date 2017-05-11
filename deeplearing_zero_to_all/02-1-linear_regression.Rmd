@@ -1,0 +1,42 @@
+---
+title: "Linear Regression with TF"
+output: html_notebook
+---
+
+Install TensorFlow for R as below.
+https://github.com/rstudio/tensorflow
+
+Load library
+```{r}
+library(tensorflow)
+```
+
+
+```{r}
+x_train = c(1, 2, 3)
+y_train = c(1, 2, 3)
+
+W = tf$Variable(tf$random_normal(shape(1L)), name='weight')
+b = tf$Variable(tf$random_normal(shape(1L)), name='bias')
+
+hypothesis = x_train * W + b
+
+cost = tf$reduce_mean(tf$square(hypothesis - y_train))
+
+optimizer = tf$train$GradientDescentOptimizer(learning_rate=0.01)
+train = optimizer$minimize(cost)
+
+sess = tf$Session()
+sess$run(tf$global_variables_initializer())
+
+df = data.frame()
+for (step in 1:2001) {
+  sess$run(train)
+  if (step %% 20 == 0) {
+    df <- rbind(df, c(step, sess$run(cost), sess$run(W), sess$run(b)))
+  }
+}
+
+plot(df)
+```
+
