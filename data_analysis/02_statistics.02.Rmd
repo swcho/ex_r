@@ -1,0 +1,32 @@
+---
+title: "확률분포"
+output: html_notebook
+---
+
+# 난수 발생
+평균이 10, 표준편차가 25인 정규분포에서 5 개의 난수 발생
+```{r}
+rnorm(5, mean = 10, sd = 25)
+```
+
+# 확률 계산
+평균이 0이고, 표준편차가 1인 표준 정규분포에서 X<=0의 확률
+```{r}
+pnorm(0, mean = 0, sd = 1)
+pnorm(35, mean = 10, sd = 25)
+```
+
+# 표준정규분포에서 누적확률이 0.9인 X
+```{r}
+qnorm(0.5, mean = 0, sd = 1)
+qnorm(0.8413447, mean = 10, sd = 25)
+```
+
+# 확률밀도 함수
+표준정규분포 확률밀도함수에서 x=0의 확률
+```{r}
+dnorm(0, mean = 0, sd = 1)
+plot(density(rnorm(100000, mean = 0, sd = 1)))
+plot(density(rnorm(100000, 0.1)))
+```
+

@@ -1,0 +1,57 @@
+---
+title: "통계분석"
+output: html_notebook
+---
+
+# 표본추출
+
+## Random Smapling
+
+### 비복원 추출 (조합)
+```{r}
+sample(1:100, 5)
+```
+
+### 복원 추출 (중복 조합)
+```{r}
+sample(1:100, 5, replace=T)
+```
+
+### 가중치 부여
+```{r}
+sample(1:100, 5, replace=T, prob=1:100)
+```
+
+## Stratified Random Sampling
+
+### 비복원
+```{r}
+# install.packages('sampling')
+library(sampling)
+data(iris)
+(x <- strata(c('Species'), size=c(2, 2, 2), method='srswor', data=iris))
+getdata(iris, x)
+```
+
+### 복원
+```{r}
+(x<-strata(c('Species'), size=c(2, 2, 2), method='srswr', data=iris))
+getdata(iris, x)
+```
+
+# Systematic Sampling (계통 샘플링)
+임의의 위치에서 매 k 번째 항목 추출
+
+```{r}
+# install.packages('doBy')
+library(doBy)
+(x <- data.frame(x=1:100))
+# 1 의 내용을 30% 추출한다.
+sampleBy(~1, frac=.3, data=x, systematic=T)
+
+# 집단별 표본 추출
+# iris 데이터에서 Species(품종)별로 20%의 데이터를 추출하고 싶다면 다음과 같이 하면 된다.
+sampleBy(~Species, frac=.2, data=iris)
+sampleBy(~Species, frac=.2, data=iris, systematic = T)
+```
+

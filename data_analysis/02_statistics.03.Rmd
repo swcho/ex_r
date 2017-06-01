@@ -1,0 +1,145 @@
+---
+title: "추정과 검정의 사례"
+output: html_notebook
+---
+
+https://www.youtube.com/watch?v=uzsNpYSiXjY
+스포츠 이온음료의 용량이 제품에 표시된 300ml 보다 모자란다.
+300개 표본, 표본 평균 244.65, 표본 표준 편차 20
+유의수준 0.05에서의 좌측검정
+```{r}
+p_mean = 300;
+p_sd = 20;
+s_count = 300;
+s_mean = 244.65;
+s_sd = 20;
+z_d005 = -1.64
+
+# 검증 통계량
+z = (s_mean - p_mean)/(s_sd/sqrt(s_count))
+
+p_all = rnorm(10000, mean = 300, p_sd)
+s_all = rnorm(s_count, mean = s_mean, sd = s_sd)
+p_dist = density(p_all)
+s_dist = density(s_all)
+plot(p_dist)
+lines(s_dist)
+```
+
+# 일표본 t 검정
+https://youtu.be/aA_SldV3dMY?t=447
+용량이 250ml로 표기되어 있는 이온음료가 있다.
+정말 250ml가 맞는지 총 300개의 표본을 설정하여 검정하자.
+표본 1, 평균 1 => 일표본 t 검정
+귀무가설: 이온음료의 용량은 250ml이다.
+대립가설: 이온음료의 용량은 250ml가 아니다.
+```{r}
+df <- read.xls('일표본 t 검정.xls')
+t.test(df$용량, alternative = 'two.sided', mu = 0)
+
+# plot(x)
+x_dens = density(df$용량)
+plot(x_dens)
+summary(df$용량)
+t.test(df$용량, alternative = 'two.sided', mu = 250)
+# t.test(df$용량, alternative = 'two.sided', mu = 300)
+```
+
+자유도: 299
+유의확률(양쪽): .000
+평균: 244.2491
+모평균 95% 신뢰구간: 241 ~ 246
+유의 확률 작음...
+
+# 단일 표본 모평균에 대한 추정 및 검정사례
+
+```{r}
+x <- rnorm(1000)
+t.test(x)
+plot(density((x)))
+```
+
+
+```{r}
+sample_count = 1000
+x <- rnorm(sample_count)
+sample_mean = mean(x)
+sample_sd = sd(x)
+z = (sample_mean - 0)/(sample_sd/sqrt(sample_count))
+value = qnorm(z, mean = sample_mean, sd = sample_sd)
+plot(x)
+dens = density(x)
+q = qnorm(1.96, mean = sample_mean, sd = sample_sd)
+(y = length(dens$y[dens$y < 0.2]))
+plot(dens, main='Density', xlab='x', ylab='p')
+lines(c(0, 0), c(0, 0.4), col='green')
+lines(c(0.16, 0.16), c(0, 0.4), col='red')
+lines(c(z, z), c(0, 0.4), col='blue')
+lines(c(-4, 4), c(q, q), col='yellow')
+t.test(x)
+```
+
+http://rfriend.tistory.com/114
+```{r}
+# Normal distribution plot, X~N(63, 8^2), right-sided test
+x1 <- c(33:93)
+plot(x1, dnorm(x1, mean=63, sd=8), type='l', 
+     main="Normal distribution, X~N(63,8^2), right-sided test")
+
+abline(v=63, col="blue", lty=3)
+abline(v=63 + 1.96*8, col="red", lty=2)
+text(82, 0.003, labels = "------->")
+```
+
+# 대응표본 t 검정
+https://youtu.be/aA_SldV3dMY?t=758
+최근 A 제약회사에서는 건강식품 개발.
+100명을 표본으로, 복용 전/후의 체중 변화를 조사해 체중감량 효과 있는지 확인
+* 귀무가설: 체중감량에 효과가 없다.
+* 대립가설: 체중감량에 효과가 있다.(=체중 감량이 될 것이다.)
+```{r}
+# install.packages('gdata')
+require(gdata)
+df <- read.xls('대응표본 t 검정.xls')
+# 상관계수가 0.871 임으로, 표본 유사율이 높음을 이야기 함.
+# 이정도 되어야 의미 있음.
+# t.test의 p-value도 0.1 이하여야 신뢰할 수 있음.
+cor(df$복용.전, df$복용.후)
+# 유의 확률 0.000 => 대립가설 지지.
+# T 값은 9.991, t 값이 1.96 보다 크면 유의하다고 판단.
+# 검정 결과가 유의함으로, 귀무가설 기각.
+# 평균 3.62 만큼 줄어든다.
+# 따라서, 몸무게가 줄어든다.
+t.test(df$복용.전, df$복용.후, data=df, paired=T)
+```
+
+* 대응표본 통계량: 복용전/후 대응에 대한 분석.
+
+# p.103 대응 표본 평균 검정
+
+```{r}
+t.test(extra~group, data=sleep, paired=T, var.equal=T)
+```
+
+p-value 0.002833 < 0.05 임으로 귀무가설을 기각할 수 있음. (두 표본의 평균은 다르다고 할 수 있음.)
+
+# 독립표본 t 검정
+2개의 표본을 측정하여 판단하는 분석 방법
+보통 유사하거나 대립되는 표본을 비교
+비교한 평균 값이 어떠한 의미를 가지는지 판단할 때 사용
+
+A사의 알카라인 베터리와 B 사의 알카라인 베터리의 용량을 비교해 본다.
+표본 100개를 설정하여 각각의 배터리로 동일한 전동 장난감을 작동시키고 작동시간을 비교
+https://youtu.be/aA_SldV3dMY?t=1421
+```{r}
+df <- read.xls('독립표본 t 검정.xls')
+t.test(작동시간~제조사, data=df, paired=F, var.equal=T)
+```
+
+Leven의 F 검정으로 등분산을 판정해야 함. 유의수준 이상인 0.333은 등분산임을 지지.
+
+# 독립 2 표본 평균 검정
+```{r}
+t.test(extra~group, data=sleep, paired=F, var.equal=T)
+```
+

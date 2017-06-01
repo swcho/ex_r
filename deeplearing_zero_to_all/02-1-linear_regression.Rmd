@@ -37,6 +37,15 @@ for (step in 1:2001) {
   }
 }
 
+# names(df)[1] <- paste('step')
+# names(df)[2] <- paste('cost')
+# names(df)[3] <- paste('weight')
+# names(df)[4] <- paste('bias')
+colnames(df) <- c('step', 'cost', 'weight', 'bias')
 plot(df)
 ```
 
+Diagram shows,
+cost converged to 0,
+weight converted to 1,
+bias conveged to 0

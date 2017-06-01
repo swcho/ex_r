@@ -1,0 +1,96 @@
+---
+title: "R Basic Script"
+output: html_notebook
+---
+
+# Scalar & Vector
+```{r}
+(z <- 2000)
+(z <- 10:15)
+(z <- c(rep(2:3, times=2), rep(8:9, each=2)))
+z[-5]
+z[-c(3:6)]
+```
+
+# Matrix
+```{r}
+z <- c(11, 21, 31, 12, 22, 32)
+(mat <- matrix(z, 3, 2))
+dim(mat)
+diag(mat)
+t(mat)
+mat %*% t(mat)
+colnames(mat)
+colnames(mat) <- c('F_col', 'S_col')
+rownames(mat) <- c('F_row', 'S_row', 'T_row')
+mat
+mat[1,] # first row
+mat[, 2] # second column
+mat[c(1, 2), 2] # 1, 2 row by 2 col
+mat[c(1, 2), 2] <- 2 # replace value
+mat
+mat + 2000 # add to all
+```
+
+# List
+```{r}
+(lst_z <- list('Wcup', 2018, c(T, T, F), max))
+```
+
+```{r}
+e1 <- c('Wcup', 'WBC')
+e2 <- matrix(c(2014, 2018, 2022, 2006, 2009, 2013), 3, 2)
+e3 <- 10:1
+(lst_y <- list(e1=e1, e2=e2, e3=e3))
+```
+
+```{r}
+lst_y$e1
+```
+
+```{r}
+(lst_x <- c(lst_z, lst_y))
+```
+
+```{r}
+unlist(lst_x)
+```
+
+# Data frame
+
+```{r}
+rnk <- c(1, 2, 3, 4)
+team <- c('GER', 'ARG', 'NED', 'BRA')
+(wcup <- data.frame(rnk, team))
+```
+
+```{r}
+wcup[1, 2]
+wcup[, 'team']
+wcup$team
+wcup[wcup$rnk == 4,]
+```
+
+```{r}
+data("airquality")
+head(airquality)
+(newRow <- data.frame(Ozone=40, Solar.R=120, Wind=8, Temp=77, Month=10, Day = 1))
+
+new_aq_R <- rbind(airquality, newRow)
+newCol <- 1:nrow(new_aq_R)
+new_aq_RC <- cbind(new_aq_R, newCol)
+```
+
+
+```{r}
+subset(airquality, select = c(Ozone, Solar.R, Wind, Temp))
+subset(airquality, select = c(Ozone, Solar.R, Wind, Temp), subset=(Wind > 20.00 & Temp > 95.0 ))
+```
+
+```{r}
+(aq_1 <- subset(airquality, select=c(Ozone, Wind, Month, Day), subset=( Wind > 12.0 & Temp > 80.0), sort=F))
+(aq_2 <- subset(airquality, select=c(Solar.R, Temp, Month, Day), subset=(Wind > 12.0 & Temp > 8.0), sort=F))
+(mrg_aq = merge(aq_1, aq_2, by=c('Month', 'Day'), sort=F))
+
+```
+
