@@ -1,0 +1,57 @@
+---
+title: "기술통계 (Descriptive Statistics)"
+output: html_notebook
+---
+
+# 질적자료 요약 기법
+
+```{r}
+library(MASS)
+library(ggplot2)
+library(plotly)
+install.packages("plotly")
+data(survey)
+```
+
+## 도수분포표(frequency table)
+범주별 건수 및 비율 파악
+도수빈도, 상대도수, 누적도수, 누적상대도수
+1개 변수 요약
+```{r}
+(smoke <- table(survey$Smoke))
+```
+
+## 막대 그래프 (bar chart)
+범주별 도수 및 상대도수를 직사각형 막대 모양으로 그린 그래프
+막대의 높이가 상대도수에 비례
+1개 변수 요약
+```{r}
+barplot(smoke)
+ggplot(survey, aes(Smoke)) + geom_bar()
+ggplot(na.omit(survey, survey[, c('Smoke')]), aes(Smoke, na.rm = T)) + geom_bar()
+plot_ly(
+  x = names(smoke),
+  y = smoke,
+  type = "bar"
+)
+```
+
+## 원그래프 (Pie Chart)
+원을 범주별 상대도스에 비례하여 중심각을 나눈 그래프
+비율 파악 및 비교 범주의 상대 도스와 360을 곱하여 원조각의 각을 계산
+1개 변수 요약
+```{r}
+pie(smoke)
+ggplot(data.frame(smoke), aes(x='', y=Freq, fill=Var1)) + geom_bar(stat = 'identity', width = 1) + coord_polar('y', start=0)
+plot_ly(labels = names(smoke), values=smoke, type = 'pie')
+```
+
+
+## 분할표
+범주형 변수 두 개의 관측 값의 패턴을 파악하기 위해 작성하는 표
+두 변수의 범주를 행열에 배치하고 범주들이 교차하는 셀에 도수 표시
+2개 변수 요약
+```{r}
+table(survey$Sex, survey$Smoke, survey$Fold, survey$Clap)
+```
+
