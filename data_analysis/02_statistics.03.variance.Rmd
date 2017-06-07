@@ -1,0 +1,61 @@
+---
+title: "통계분석: 기타사례"
+output: html_notebook
+---
+
+# 이표본분산
+
+```{r}
+data(iris)
+var.test(iris$Sepal.Width, iris$Sepal.Length)
+```
+
+두 변수의 분산의 비율이 1이 아닌 즉, 분산이 같지 않다는 대립가설에 대한 F-test 결과.
+p-value = 3.595e-14 로써, 0.05 보다 작음. 따라서 95% 신뢰도로 두 표본의 분산은 같지 않다고 할 수 있음(귀무가설 기각)
+
+# 일표본비율
+```{r}
+prop.test(42, 100)
+binom.test(42, 100)
+```
+
+
+#이표본비율 (귀무가설: 성공/실패의 확률이 같다.)
+
+```{r}
+prop.test(c(44, 55), c(100, 90))
+```
+
+두 표본의 성공확률이 같다고 할 수 있는지 검증
+
+# 상관계수 검정
+p-value = 0.02937 로 0.05 보다 작으므로 95% 신뢰도로 상관관계가 있음.
+```{r}
+cor.test(c(1, 2, 3, 4, 5), c(1, 0, 3, 4, 5), method="pearson")
+```
+
+# 독립성 검정
+
+성별과 운동빈도 관계, 없음
+```{r}
+library(MASS)
+survey
+s.tab <- xtabs(~Sex+Exer, data=survey)
+s.tab
+chisq.test(s.tab)
+```
+
+# 정규분포의 값 여부 결정
+
+0.05 보다 크면 정규 분포
+```{r}
+shapiro.test(rnorm(1000))
+```
+
+# 정규분포여부 검정
+
+같은 모집단에서 추출하였는가? 0.05 보다 작음으로 기각
+```{r}
+ks.test(rnorm(100), runif(100))
+```
+
