@@ -52,6 +52,54 @@ plot_ly(labels = names(smoke), values=smoke, type = 'pie')
 두 변수의 범주를 행열에 배치하고 범주들이 교차하는 셀에 도수 표시
 2개 변수 요약
 ```{r}
-table(survey$Sex, survey$Smoke, survey$Fold, survey$Clap)
+table(survey$Sex, survey$Smoke)
+```
+
+# 양적자료 요약 기법
+
+## 히스토그램 (histogram)
+```{r}
+data("mtcars")
+mtcars$mpg
+hist(mtcars$mpg)
+qplot(mtcars$mpg, geom="histogram")
+ggplot(mtcars, aes(x=mpg)) + geom_histogram(bins = 10)
+plot_ly(x = mtcars$mpg, type = "histogram")
+```
+
+## 줄기 잎 그림(stem and leaf)
+```{r}
+mtcars$hp
+stem(mtcars$hp)
+```
+
+## 선그래프 (line graph)
+```{r}
+plot(BOD)
+ggplot(BOD, aes(x=BOD$Time, y=BOD$demand)) + geom_line()
+plot_ly(BOD, x = ~Time, y = ~demand, type = 'scatter', mode = 'lines')
+
+x <- c(1:100)
+random_y <- rnorm(100, mean = 0)
+data <- data.frame(x, random_y)
+
+plot_ly(data, x = ~x, y = ~random_y, type = 'scatter', mode = 'lines')
+plot_ly(data)
+```
+
+## 산점도
+```{r}
+plot(mtcars$hp, mtcars$wt)
+ggplot(mtcars, aes(x=mtcars$hp, y=mtcars$wt)) + geom_point()
+plot_ly(mtcars, x=~hp, y=~wt)
+```
+
+# 자료의 요약
+
+## 상자도표 (box plot)
+```{r}
+boxplot(mtcars$disp, mtcars$hp)
+ggplot(mtcars, aes(x=1, mtcars$disp)) + geom_boxplot()
+plot_ly(mtcars, y=~disp, type='box')
 ```
 
