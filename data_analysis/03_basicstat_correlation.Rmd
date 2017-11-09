@@ -1,0 +1,89 @@
+---
+title: "상관 분석(correlation analysis)"
+output: html_notebook
+---
+
+상관분석은 연속형, 순서형 자료를 대상.
+범주형은 불가능
+
+# 상관분석 절차
+* 변수들 간의 산점도 그리기
+* 산점도를 통해 직선관계를 파악
+* 상관계수 계산
+* 상관계수로 자료 해석
+* 상관관계의 유뮤, 정도에 따라 회귀분석 실시
+
+# 유형
+
+## 피어슨
+* 개념: 등간척도 이상으로 측정된 두 변수들의 상관관계 측정 방식
+* 특징: 연속형 변수, 정규성 가정, 대부분 많이 사용
+* 상관계수: 피어슨 r(적률상관계수)
+
+## 스피어만
+* 개념: 서열척도인 두 변수를 상관 관계 측정 방식
+* 특징: 순서형 변수, 모수 방법, 순위를 기준으로 상관관계 측정
+* 상관계수: 순위 상관계수 (ρ, 로우)
+
+## 켄달
+* 개념: 서열 척도인 두 변수들의 상관관계 측정 방식
+* 특징: 순서형 변수, 비모수 방법
+* 상관계수: (τ, 타우)
+
+# 산점도를 통한 직선관계 파악
+```{r}
+# install.packages('Hmisc')
+library(Hmisc)
+library(ggplot2)
+library(plotly)
+
+data("airquality")
+aq <- na.omit(airquality)
+plot(airquality)
+ggplot(aq, aes(x=Ozone, y=Temp)) + geom_point() + geom_smooth(method = 'lm')
+plot_ly(aq, x=aq$Ozone, y=aq$Temp)
+```
+
+# 상관계수 계산
+
+```{r}
+cor(aq$Ozone, aq$Temp)
+```
+
+```{r}
+cor(aq[, c(1:4)])
+```
+
+# 공분산
+
+```{r}
+cov(aq[, c(1:4)])
+```
+
+# 피어슨 상관분석
+
+```{r}
+cor(aq[, c(1:4)], method='pearson')
+```
+
+# 스피어만 서열척도
+```{r}
+rcorr(as.matrix(aq[, c(1:4)]), type='spearman')
+
+Player <- c("LSY", "CHW", "KHS", "BBH", "KJH", "NJW", "CJ")
+BT <- c(443, 551, 434, 450, 450, 435, 434)
+H2 <- c(24, 28, 23, 17, 21, 18, 18)
+HR <- c(13, 29, 16, 37, 22, 21, 28)
+BB <- c(30, 47, 62, 92, 68, 62, 64)
+SO <- c(94, 91, 71, 96, 109, 70, 109)
+data1 <- data.frame(BT, H2, HR, BB, SO)
+rownames(data1) <- Player
+rcorr(as.matrix(data1), type="spearman")
+```
+
+# 켄달 서열 척도
+
+```{r}
+cor(data1, method='kendall')
+```
+
