@@ -6,4 +6,5 @@ include/
 lib/
 .Python
 pip-selfcheck.json
+*.swp
 

@@ -1,0 +1,57 @@
+---
+title: "ex for trade"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## quantmod
+
+```{r}
+# install.packages('quantmod')
+require(quantemod)
+
+```
+
+
+## dplyr
+
+```{r}
+# install.packages('dplyr')
+require(hflights)
+require(dplyr)
+
+dim(hflights)
+flight_dt <- tbl_df(hflights)
+carrier_group <- group_by(flight_dt, UniqueCarrier)
+summarise(carrier_group, avg_delay = mean(ArrDelay, na.rm = TRUE))
+```
+
+## xts
+```{r}
+# install.packages('xts')
+require('xts')
+
+data(sample_matrix)
+class(sample_matrix)
+head(sample_matrix)
+xts_matrix <- as.xts(sample_matrix)
+class(xts_matrix)
+str(xts_matrix)
+plot(xts_matrix)
+# plot(xts_matrix, cex.main = 0.8, type='candles')
+```
+
+## quantmode
+```{r}
+require(quantmod)
+AAPL <- getSymbols('AAPL', auto.assign = FALSE)
+chartSeries(AAPL,
+            subset = "2010::2010-4",
+            theme = chartTheme('white'),
+            TA = "addVo(); addBBands()"
+            )
+```
+

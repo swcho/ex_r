@@ -1,0 +1,76 @@
+---
+title: "trading"
+output: html_document
+---
+
+JSON 파일을 로드한다.
+```{r}
+# install.packages('rjson')
+library('rjson')
+
+# read json file
+json_data <- fromJSON(file='data2.json')
+
+# make frame
+json_data <- as.data.frame(do.call('rbind', json_data))
+
+# set name
+colnames(json_data) <- c('time', 'v1', 'v2', 'v3', 'v4', 'quantity')
+
+```
+
+```{r}
+
+# covert date
+json_data[,'time'] <- as.POSIXct(json_data[,'time']/1000, origin = "1970-01-01")
+
+```
+
+
+
+Plot with ggplot
+```{r}
+
+# Draw plot
+require(ggplot2)
+require(scales)
+theme_set(theme_bw())
+ggplot(json_data, aes(x = time)) +
+  geom_point(aes(y = v1), col = 'red') +
+  geom_point(aes(y = v2), col = 'blue') +
+  scale_y_continuous(name='KRW', label = comma) +
+  xlab('')
+
+```
+
+```{r}
+json_data$diff <- c(0, diff(json_data$v1))
+```
+
+
+Plot with Plotly
+```{r}
+require('plotly')
+ay <- list(
+  tickfont = list(color = "red"),
+  overlaying = "y",
+  side = "right",
+  title = "second y axis"
+)
+y_diff <- list(
+  tickfont = list(color = "green"),
+  overlaying = "y",
+  side = "right",
+  title = "second y axis"
+)
+# plot_ly(midwest, x = ~percollege, color = ~state, type = "box")
+plot_ly(json_data, x = ~time, y = ~v1 , type = 'scatter', mode = 'lines', marker = list(size = 1)) %>%
+  # add_trace(x = ~time, y = ~v2, type='scatter', mode = 'lines', marker = list(color='yellow')) %>%
+  # add_trace(x = ~time, y = ~v3, type='scatter', mode = 'markers', marker = list(color='red')) %>%
+  add_trace(x = ~time, y = ~quantity, type='bar', mode = 'bars', marker = list(color='red'), opacity=0.5, yaxis = 'y2') %>%
+  add_trace(x = ~time, y = ~diff, type='scatter', mode = 'lines', marker = list(color='green'), opacity=0.5, yaxis = 'y3') %>%
+  layout(yaxis2 = ay) %>%
+  layout(yaxis3 = y_diff)
+
+```
+
