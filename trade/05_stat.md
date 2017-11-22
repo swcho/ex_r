@@ -1,0 +1,118 @@
+Histogram Of Price And Return
+================
+
+    ## Loading required package: quantmod
+
+    ## Loading required package: xts
+
+    ## Loading required package: zoo
+
+    ## 
+    ## Attaching package: 'zoo'
+
+    ## The following objects are masked from 'package:base':
+    ## 
+    ##     as.Date, as.Date.numeric
+
+    ## Loading required package: TTR
+
+    ## Version 0.4-0 included new data defaults. See ?getSymbols.
+
+    ## 'getSymbols' currently uses auto.assign=TRUE by default, but will
+    ## use auto.assign=FALSE in 0.5-0. You will still be able to use
+    ## 'loadSymbols' to automatically load data. getOption("getSymbols.env")
+    ## and getOption("getSymbols.auto.assign") will still be checked for
+    ## alternate defaults.
+    ## 
+    ## This message is shown once per session and may be disabled by setting 
+    ## options("getSymbols.warning4.0"=FALSE). See ?getSymbols for details.
+
+    ## 
+    ## WARNING: There have been significant changes to Yahoo Finance data.
+    ## Please see the Warning section of '?getSymbols.yahoo' for details.
+    ## 
+    ## This message is shown once per session and may be disabled by setting
+    ## options("getSymbols.yahoo.warning"=FALSE).
+
+    ## Warning in as.POSIXlt.POSIXct(Sys.time()): unknown timezone 'zone/tz/2017c.
+    ## 1.0/zoneinfo/Asia/Seoul'
+
+``` r
+# 범례가 포함된 확률 밀도 히스토그램 생성
+# hist(prices, breaks = 100)
+hist(prices, breaks = 100, probability = TRUE, cex.main = 0.9)
+abline(v = mean_prices, lwd = 2)
+# legend('topright', paste('mean=', mean_prices, '; sd=', sd_prices))
+legend('topright', cex = 0.8, border = NULL, bty = 'n', paste('mean=', mean_prices, '; sd=', sd_prices))
+```
+
+![](05_stat_files/figure-markdown_github/unnamed-chunk-1-1.png)
+
+``` r
+plot_4_ranges <- function(data, start_date, end_date, title) {
+  
+  # 그래프 창을 2행 2열로 생성
+  par(mfrow = c(2, 2))
+  
+  for (i in 1:4) {
+    # 데이터 선택에 사용할 날짜 기간 문자열
+    range <- paste(start_date[i], '::', end_date[i], sep = '')
+    
+    # 기간에 따른 데이터
+    time_series <- data[range]
+    
+    # 평균, 표준편차
+    mean_value = round(mean(time_series), 2)
+    sd_value = round(sd(time_series), 2)
+    
+    # 그래프
+    hist_title <- paste(title, range)
+    hist(time_series, breaks = 100, probability = TRUE, xlab = "", main = hist_title, cex.main = 0.8)
+    legend("topright", cex = 0.7, bty = 'n', paste('mean=', mean_value, '; sd=', sd_value))
+  }
+}
+
+begin_dates <- c("2007-01-01", "2008-06-06", "2009-10-10", "2011-03-03")
+end_dates <- c("2008-06-05", "2009-10-09", "2011-03-02", "2013-01-06")
+plot_4_ranges(prices, begin_dates, end_dates, "SPY prices for:")
+```
+
+![](05_stat_files/figure-markdown_github/unnamed-chunk-2-1.png)
+
+로그 수익율 계산
+
+``` r
+plot_4_ranges <- function(data, start_date, end_date, title) {
+  
+  # 그래프 창을 2행 2열로 생성
+  par(mfrow = c(2, 2))
+  
+  for (i in 1:4) {
+    # 데이터 선택에 사용할 날짜 기간 문자열
+    range <- paste(start_date[i], '::', end_date[i], sep = '')
+    
+    # 기간에 따른 데이터
+    time_series <- data[range]
+    
+    # NA 제거
+    time_series <- time_series[!is.na(time_series[,1]),]
+    
+    # 평균, 표준편차
+    mean_value = round(mean(time_series), 2)
+    sd_value = round(sd(time_series), 2)
+    
+    # 그래프
+    hist_title <- paste(title, range)
+    hist(time_series, breaks = 100, probability = TRUE, xlab = "", main = hist_title, cex.main = 0.8)
+    legend("topright", cex = 0.7, bty = 'n', paste('mean=', mean_value, '; sd=', sd_value))
+  }
+}
+
+returns <- diff(log(prices))
+# NA 제거
+# returns <- returns[!is.na(returns[,1]),]
+
+plot_4_ranges(returns, begin_dates, end_dates, "SPY prices for:")
+```
+
+![](05_stat_files/figure-markdown_github/unnamed-chunk-3-1.png)
