@@ -1,0 +1,32 @@
+---
+title: "Linearity of Linear Regration"
+output: github_document
+---
+
+회귀분석
+```{r}
+# 데이터 생성
+x <- seq(1:100)
+y <- x ^ 2
+
+# 그래프 생성
+plot(x, y)
+
+# 회귀분석
+reg_parabola <- lm(y ~ x)
+
+# 선형 그래프
+abline(reg_parabola, lwd = 2)
+
+# 결과
+summary(reg_parabola)
+```
+
+다시 변형
+```{r}
+plot(x, sqrt(y))
+reg_transformed = lm(sqrt(y) ~ x)
+abline((reg_transformed))
+summary(reg_transformed)
+```
+
