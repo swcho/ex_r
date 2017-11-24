@@ -1,0 +1,17 @@
+---
+title: "Variability"
+output: github_document
+---
+
+```{r}
+# 1000개의 정규분포 숫자 생성, 수익률이 정규 분포를 띤다는 가정
+x <- rnorm(1000, 0, 1)
+
+# 수익률과 제곱 수익률의 자기 상관
+par(mfrow = c(2, 1))
+acf(x, main = "Returns")
+grid()
+acf(x ^ 2, main = "Returns squared")
+grid()
+```
+
