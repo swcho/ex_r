@@ -1,0 +1,62 @@
+TLS, Total Least Squares
+================
+
+``` r
+require(quantmod)
+require(xts)
+```
+
+``` r
+pepsi <- getSymbols('PEP', from = '2013-01-01', to = '2014-01-01', adjust = T, auto.assign = FALSE)
+```
+
+    ## Warning in strptime(xx, f <- "%Y-%m-%d", tz = "GMT"): unknown timezone
+    ## 'zone/tz/2017c.1.0/zoneinfo/Asia/Seoul'
+
+``` r
+coke <- getSymbols('COKE', from = '2013-01-01', to = '2014-01-01', adjust = T, auto.assign = FALSE)
+```
+
+스프레드
+--------
+
+``` r
+prices <- cbind(pepsi[, 6], coke[, 6])
+prices_changes <- as.data.frame(apply(prices, 2, diff))
+ans <- lm(prices_changes$PEP.Adjusted ~ prices_changes$COKE.Adjusted)
+ans2 <- lm(prices_changes$COKE.Adjusted ~ prices_changes$PEP.Adjusted)
+beta <- ans$coefficients[2]
+plot(prices_changes$PEP.Adjusted, prices_changes$COKE.Adjusted,
+     ylab = "Coke price changes",
+     xlab = "Pepsi price changes",
+     main = "Pepsi vs. Coke")
+abline(ans, col="red")
+abline(ans2, col="blue")
+grid()
+```
+
+![](06_01_total_least_squares_files/figure-markdown_github/unnamed-chunk-3-1.png)
+
+보통 최소 제곱법과 전체 최소 제곱법
+-----------------------------------
+
+``` r
+# 데이터 구하기
+SPY <- getSymbols('SPY', from = '2011-01-01', to = '2012-12-31', adjust = T, auto.assign = FALSE)
+AAPL <- getSymbols('AAPL', from = '2011-01-01', to = '2012-12-31', adjust = T, auto.assign = FALSE)
+```
+
+``` r
+# 가격차이 계산
+x <- diff(as.numeric(SPY[,4]))
+y <- diff(as.numeric(AAPL[,4]))
+plot(x, y, main = "Scatter plot of returns. SPY vs. AAPL")
+
+# 주성분 분석을 통한 전체 최소 제곱 회귀 (TLS, Totla Least Squares)
+r <- prcomp(~x+y)
+slope <- r$rotation[2, 1] / r$rotation[1, 2]
+intercept <- r$center[2] - slope * r$center[1]
+abline(a = intercept, b = slope, lty = 3)
+```
+
+![](06_01_total_least_squares_files/figure-markdown_github/unnamed-chunk-5-1.png)
