@@ -1,0 +1,170 @@
+---
+title: "Trial Summary"
+output: html_document
+---
+
+```{r}
+require(plotly)
+require(rjson)
+require(xts)
+# read json file
+xts_from_json <- function(tag, file) {
+  json_data <- fromJSON(file=file)
+  json_data <- as.data.frame(do.call('rbind', json_data))
+  col_name <- function(name) {
+    paste(tag, name, sep = '.')
+  }
+  colnames(json_data) <- c('time', 'Open', 'Close', 'High', 'Low', 'Volume')
+  json_data[,1] <- as.POSIXct(json_data[,1]/1000, origin = "1970-01-01")
+  json_data <- json_data[, c(1, 2, 4, 5, 3, 6)]
+  xts_data <- xts(json_data[, -1], order.by = json_data[, 1])
+  return (xts_data);
+}
+
+btc_min <- xts_from_json('BTC', '171125_btc_min.json')['2017-10-11::2017-11-23']
+btc_min = btc_min[4000000 < btc_min$Low,]
+btc_min_returns = diff(log(btc_min$Close))
+
+# Draw with highchart
+# highchart() %>%
+#   hc_yAxis_multiples(
+#     list(lineWidth = 3),
+#     list(showLastLabel = FALSE, opposite = TRUE)
+#   ) %>%
+#   hc_add_series(btc_min) %>%
+#   hc_add_series(btc_min_returns, yAxis = 1)
+
+# plot(btc_min)
+
+btc_min_return_df <- data.frame(Date = index(btc_min), coredata(btc_min))
+
+# Draw with plotly
+# plot_ly(as.data.frame(btc_min_returns))
+p <- plot_ly(data = trends, x = ~Date) %>%
+  
+```
+
+
+```{r}
+x <- xts(
+  c(runif(10,0,1), NA, NA, runif(10,0,1)),
+  order.by = seq.Date(Sys.Date(), by="days", length.out=22)
+)
+
+plot(x)
+
+plot_ly(
+  data = data.frame(date=index(x), value=x[,1,drop=T]),
+  x = date,
+  y = value
+)
+
+plot_ly(
+  data = data.frame(date=index(x), value=x[,1,drop=T]),
+  x = date,
+  y = value,
+  connectgaps = TRUE
+)
+```
+
+
+
+```{r}
+
+bch_min <- xts_from_json('BCH', '171125_bch_min.json')['2017-10-11::2017-11-23']
+bch_min = bch_min[1 < bch_min$Low,]
+bch_min = bch_min[bch_min$High < 2000000 ,]
+plot(bch_min)
+hchart(bch_min)
+
+close_price <- cbind(bch_min[,2], btc_min[,2])
+# close_price_returns <- apply(close_price, 2, log)
+close_price_changes <- apply(close_price, 2, diff)
+
+# close_price_changes = na.omit(close_price_changes)
+# sum(is.na(close_price_changes[,1]))
+close_price_changes = close_price_changes[!is.na(close_price_changes[,1]),]
+close_price_changes = close_price_changes[!is.na(close_price_changes[,2]),]
+close_price_changes = close_price_changes[!is.infinite(close_price_changes[,2]),]
+sum(is.infinite(close_price_changes[,2]))
+
+plot(close_price_changes[, 1], close_price_changes[, 2])
+
+ans <- lm(BCH.Close ~ BTC.Close, data = as.data.frame(close_price_changes))
+ans$coefficients[2]
+summary(ans)
+```
+
+```{r}
+highchart() %>% 
+  hc_yAxis_multiples(
+    list(lineWidth = 3),
+    list(showLastLabel = FALSE, opposite = TRUE)
+  ) %>% 
+  hc_add_series(data = rnorm(10)) %>%
+  hc_add_series(data = rexp(10), type = "spline", yAxis = 1)
+
+```
+
+
+```{r}
+# read json file
+xts_from_json <- function(tag, file) {
+  json_data <- fromJSON(file=file)
+  json_data <- as.data.frame(do.call('rbind', json_data))
+  col_name <- function(name) {
+    paste(tag, name, sep = '.')
+  }
+  colnames(json_data) <- c('time', col_name('Open'), col_name('Close'), 'High', 'Low', 'Volume')
+  json_data[,1] <- as.POSIXct(json_data[,1]/1000, origin = "1970-01-01")
+  btc_min <- xts(json_data[, -1], order.by = json_data[, 1])
+  return (btc_min);
+}
+
+btc_min <- xts_from_json('171125_btc_min.json')
+bch_min <- xts_from_json('171125_bch_min.json')
+
+
+{
+# barChart(btc_min)
+candleChart(btc_min)
+addMACD()
+addBBands()
+}
+{
+  highchart() %>% 
+  hc_add_series(btc_min)
+  #hc_add_series(y, type = "ohlc") %>% 
+  #hc_add_series(z, type = "line")
+}
+```
+
+
+```{r}
+btc_min <- xts_from_json('BTC', '171125_btc_min.json')['2017-10-11::2017-11-23']
+bch_min <- xts_from_json('BCH', '171125_bch_min.json')['2017-10-11::2017-11-23']
+
+close_price <- cbind(bch_min[,2], btc_min[,2])
+# close_price_returns <- apply(close_price, 2, log)
+close_price_changes <- apply(close_price, 2, diff)
+
+# close_price_changes = na.omit(close_price_changes)
+# sum(is.na(close_price_changes[,1]))
+close_price_changes = close_price_changes[!is.na(close_price_changes[,1]),]
+close_price_changes = close_price_changes[!is.na(close_price_changes[,2]),]
+close_price_changes = close_price_changes[!is.infinite(close_price_changes[,2]),]
+sum(is.infinite(close_price_changes[,2]))
+
+plot(close_price_changes[, 1], close_price_changes[, 2])
+
+ans <- lm(BCH.Close ~ BTC.Close, data = as.data.frame(close_price_changes))
+ans$coefficients[2]
+summary(ans)
+# ccf()
+```
+
+
+```{r}
+# https://apiv2.bitcoinaverage.com/indices/global/history/BTCUSD?period=monthly&?format=csv
+```
+
