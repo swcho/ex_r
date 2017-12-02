@@ -1,12 +1,14 @@
 ---
 title: "Trial Summary"
-output: html_document
+output: github_document
 ---
 
 ```{r}
 require(plotly)
 require(rjson)
 require(xts)
+require(highcharter)
+require(quantmod)
 # read json file
 xts_from_json <- function(tag, file) {
   json_data <- fromJSON(file=file)
@@ -40,7 +42,7 @@ btc_min_return_df <- data.frame(Date = index(btc_min), coredata(btc_min))
 
 # Draw with plotly
 # plot_ly(as.data.frame(btc_min_returns))
-p <- plot_ly(data = trends, x = ~Date) %>%
+# p <- plot_ly(data = trends, x = ~Date) %>%
   
 ```
 
@@ -53,18 +55,18 @@ x <- xts(
 
 plot(x)
 
-plot_ly(
-  data = data.frame(date=index(x), value=x[,1,drop=T]),
-  x = date,
-  y = value
-)
-
-plot_ly(
-  data = data.frame(date=index(x), value=x[,1,drop=T]),
-  x = date,
-  y = value,
-  connectgaps = TRUE
-)
+# plot_ly(
+#   data = data.frame(date=index(x), value=x[,1,drop=T]),
+#   x = date,
+#   y = value
+# )
+# 
+# plot_ly(
+#   data = data.frame(date=index(x), value=x[,1,drop=T]),
+#   x = date,
+#   y = value,
+#   connectgaps = TRUE
+# )
 ```
 
 
@@ -90,9 +92,9 @@ sum(is.infinite(close_price_changes[,2]))
 
 plot(close_price_changes[, 1], close_price_changes[, 2])
 
-ans <- lm(BCH.Close ~ BTC.Close, data = as.data.frame(close_price_changes))
-ans$coefficients[2]
-summary(ans)
+# ans <- lm(BCH.Close ~ BTC.Close, data = as.data.frame(close_price_changes))
+# ans$coefficients[2]
+# summary(ans)
 ```
 
 ```{r}
@@ -121,8 +123,8 @@ xts_from_json <- function(tag, file) {
   return (btc_min);
 }
 
-btc_min <- xts_from_json('171125_btc_min.json')
-bch_min <- xts_from_json('171125_bch_min.json')
+btc_min <- xts_from_json('BTC', '171125_btc_min.json')
+bch_min <- xts_from_json('BCH', '171125_bch_min.json')
 
 
 {
