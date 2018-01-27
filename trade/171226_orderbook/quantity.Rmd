@@ -1,0 +1,81 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r}
+require(data.table)
+orders <- read.csv("orders.csv")
+orders[,1] <- as.POSIXct(orders[,1]/1000, origin = "1970-01-01")
+orders[,2] <- as.factor(orders[,2])
+orders[,3] <- as.numeric(orders[,3])
+orders[,4] <- as.numeric(orders[,4])
+orders[,5] <- list(total=orders[,3] * orders[,4])
+orders.table <- data.table(orders)
+
+# Show range of date
+range(orders.table$date)
+
+# filter(orders.table, date < as.POSIXct("2017-12-23 10:30:00"))
+
+# orders.table <- orders.table[as.POSIXct("2017-12-23 10:30:00") < date]
+
+orders.qty.ask <- orders.table[order=='ask', list(total=sum(qty)), by=list(date, order)]
+orders.qty.bid <- orders.table[order=='bid', list(total=sum(qty)), by=list(date, order)]
+
+
+{
+plot(x=orders.qty.ask$date, y=orders.qty.ask$total, type='l', col='red')
+lines(x=orders.qty.bid$date, y=orders.qty.bid$total, type='l', col='blue')
+}
+
+
+orders.avg.ask <- orders.table[order=='ask', list(avg=(sum(total) / sum(qty))), by=list(date, order)]
+orders.avg.bid <- orders.table[order=='bid', list(avg=(sum(total) / sum(qty))), by=list(date, order)]
+
+# plot ask and bid
+{
+plot(x=orders.avg.ask$date, y=orders.avg.ask$avg, type='l', col='red')
+lines(x=orders.avg.bid$date, y=orders.avg.bid$avg, type='l', col='blue')
+}
+
+```
+
+```{r}
+transactions <- read.csv("tsx.csv")
+transactions[,1] <- as.POSIXct(transactions[,1]/1000, origin = "1970-01-01")
+transactions[,5] <- list(total=transactions[,3] * transactions[,4])
+
+transactions.table <- data.table(transactions)
+# transactions.table <- transactions.table[date < as.POSIXct("2017-12-23 10:30:00")]
+# transactions.table <- transactions.table[as.POSIXct("2017-12-23 10:30:00") < date]
+transactions.avg <- transactions.table[, list(avg=(sum(total) / sum(qty))), by=list(date)]
+
+{
+par(mar=c(5, 5, 4, 6) + 0.1)
+plot(x=transactions.avg$date, y=transactions.avg$avg, type='l')
+#lines(x=orders.avg.ask$date, y=orders.avg.ask$avg, type='l', col='red')
+#lines(x=orders.avg.bid$date, y=orders.avg.bid$avg, type='l', col='blue')
+# lines(x=orders.avg.bid$date, y=diff$diff, type='l', col='yellow')
+par(new = T)
+plot(x=orders.qty.ask$date, y=orders.qty.ask$total, type="l", pch=15, col="red", xlab=NA, ylab=NA , bty = "n", axes = FALSE)
+lines(x=orders.qty.bid$date, y=orders.qty.bid$total, type='l', col='blue')
+}
+
+diff <- orders.qty.ask$total - orders.qty.bid$total
+# max(orders.qty.ask$total)
+# max(orders.qty.bid$total)
+
+length(diff)
+{
+par(mar=c(5, 5, 4, 6) + 0.1)
+plot(x=transactions.avg$date, y=transactions.avg$avg, type='l')
+lines(x=orders.avg.ask$date, y=orders.avg.ask$avg, type='l', col='red')
+lines(x=orders.avg.bid$date, y=orders.avg.bid$avg, type='l', col='blue')
+# lines(x=orders.avg.bid$date, y=diff$diff, type='l', col='yellow')
+par(new = T)
+plot(x=orders.qty.ask$date, y=diff, type="l", pch=15, col="green", xlab=NA, ylab=NA , bty = "n", axes = FALSE)
+abline(h = 0, v = 0, col = "gray60")
+}
+```
+

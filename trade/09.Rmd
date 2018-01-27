@@ -82,6 +82,21 @@ stock(symbols, currency = "USD", multiplier = 1)
 
 ```
 
+ATR (Average True Range)
+```{r}
+lagATR <- function(hlc, n = 14, maType, lag = 1, ...) {
+  atr <- ATR(hlc, n = n, maType = maType, ...)
+  atr <- lag(atr, lag)
+  out <- ATR$atr
+  colnames(out) <- "atr"
+  return(out)
+}
+
+getSymbols("SPY")
+
+lagATR(HLC(SPY))
+```
+
 
 ```{r}
 ###############################################
@@ -174,11 +189,9 @@ account.st <- "Clenow_Simple"
 rm.strat(portfolio.st)
 rm.strat(strategy.st)
 
-initPortf(portfolio.st, symbols = symbols,
-  initDate = initDate, currency = 'USD')
+initPortf(portfolio.st, symbols = symbols, initDate = initDate, currency = 'USD')
 
-initAcct(account.st, portfolios = portfolio.st,
-  initDate = initDate, currency = 'USD', initEq = initEq)
+initAcct(account.st, portfolios = portfolio.st, initDate = initDate, currency = 'USD', initEq = initEq)
 
 initOrders(portfolio.st, initDate = initDate)
 

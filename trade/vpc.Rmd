@@ -6,6 +6,31 @@ output: html_notebook
 Volume Per Close
 
 ```{r}
+source("lib.R")
+df <- xts_from_json('171125_btc_min.json', clean = TRUE)
+# https://www.quantmod.com/examples/data/
+periodicity(df)
+unclass(periodicity(df))
+to.hourly(df)
+ndays(df)
+```
+
+
+```{r}
+source("lib.R")
+df <- xts_from_json(clean = TRUE, tag="BTC")
+
+draw.volume(df)
+draw.volume(df_period)
+# draw.quant(df)
+# draw.returns(df)
+
+{
+df_period <- to.hourly(df, k = 1)
+draw.returns(df_period)
+}
+
+draw.returns(df)
 
 ```
 

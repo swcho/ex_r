@@ -1,0 +1,97 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r}
+require(data.table)
+transactions <- read.csv("tsx.csv")
+colnames(transactions) <-c('date', 'order', 'price', 'volume')
+
+# 시간 변환
+transactions[,1] <- as.POSIXct(transactions[,1]/1000, origin = "1970-01-01")
+
+# 중복 삭제
+transactions <- transactions[!duplicated(transactions),]
+
+# 시간순 정렬
+transactions <- transactions[order(transactions$date),]
+
+plot(x=transactions$date, y=transactions$price, type='l')
+```
+
+```{r}
+# OHLC 만들기
+# https://stackoverflow.com/questions/8830472/create-an-ohlc-series-from-ticker-data-using-r
+require(xts)
+
+# xts 형태로 변환
+transactions.xts <- xts(transactions[, 3:4], order.by=transactions$date)
+
+# OHLC 데이터 변환
+transactions.ohlc.min <- to.minutes(transactions.xts, k=1, indexAt="firstof")
+# transactions.ohlc.min <- to.period(transactions.xts, "minutes", indexAt="firstof")
+
+# 시간 끝자리 맞추기
+# https://rpubs.com/mohammadshadan/288218
+transactions.ohlc.min <- align.time(transactions.ohlc.min, n = 60)
+
+# 분당 인덱스 찾기
+endpoints(transactions.ohlc.min, on="minute")
+
+# 첫번째 데이터 확인
+transactions.ohlc.min[1,]
+```
+
+
+데이터 검증해 보기
+```{r}
+s_test <- transactions.xts['2017-12-23 10:00']
+paste('Open =', s_test$price[1,])
+paste('High =', max(s_test$price))
+paste('Low =', min(s_test$price))
+paste('Close =', tail(s_test$price, n=1))
+paste('Volume =', sum(s_test$volume))
+```
+
+```{r}
+require(plotly)
+require(zoo)
+# plot(transactions.ohlc.min)
+# transactions.ohlc.min.df <- as.data.frame(transactions.ohlc.min)
+
+# Plotly 를 위한 dataframe 변환
+# https://stackoverflow.com/questions/3386850/how-can-i-change-xts-to-data-frame-and-keep-index-in-r
+transactions.ohlc.min.df <- data.frame(date=index(transactions.ohlc.min), coredata(transactions.ohlc.min))
+
+# https://plot.ly/r/candlestick-charts/
+transactions.ohlc.min.df %>%
+  plot_ly(x = ~date, type="candlestick",
+          open = ~transactions.xts.Open, close = ~transactions.xts.Close,
+          high = ~transactions.xts.High, low = ~transactions.xts.Low) %>%
+  layout(title = "Basic Candlestick Chart")
+```
+
+```{r}
+# 선 그리기
+transactions %>%
+  plot_ly(x = ~date, y = ~price, mode='line')
+```
+
+```{r}
+# 차트 합하기
+transactions.xts.merge <- merge(transactions.xts, transactions.ohlc.min)
+
+# 합해진 xts를 dataframe으로 변환
+transactions.xts.merge.df <- data.frame(date=index(transactions.xts.merge), coredata(transactions.xts.merge))
+
+transactions.xts.merge.df %>%
+  plot_ly(x = ~date, type="candlestick",
+          open = ~transactions.xts.Open, close = ~transactions.xts.Close,
+          high = ~transactions.xts.High, low = ~transactions.xts.Low) %>%
+  add_lines(y = ~price, mode='line') %>%
+  layout(title = "Basic Candlestick Chart")
+
+
+```
+
