@@ -1,0 +1,354 @@
+---
+title: "Parameter Optimization"
+output: html_notebook
+---
+
+```{r}
+.fastSMA <- (1:30)
+.slowSMA <- (20:80)
+.nsamples <- 5
+
+portfolio.st <- "Port.Luxor.MA.Opt"
+account.st <- "Acct.Luxor.MA.Opt"
+strategy.st <- "Strat.Luxor.MA.Opt"
+rm.strat(portfolio.st)
+rm.strat(account.st)
+
+initPortf(name = portfolio.st,
+          symbols = symbols,
+          initDate = init_date)
+
+initAcct(name = account.st,
+         portfolios = portfolio.st,
+         initDate = init_date,
+         initEq = init_equity)
+
+initOrders(portfolio = portfolio.st,
+           symbols = symbols,
+           initDate = init_date)
+
+strategy(strategy.st, store = TRUE)
+```
+
+```{r}
+rm.strat(portfolio.st)
+rm.strat(account.st)
+
+initPortf(name = portfolio.st,
+          symbols = symbols,
+          initDate = init_date)
+
+initAcct(name = account.st,
+         portfolios = portfolio.st,
+         initDate = init_date)
+
+initOrders(portfolio = portfolio.st,
+           initDate = init_date)
+```
+
+
+## 7.1 Add Distribution
+
+이미 `indicator`, `signal`, `rule`을 설정하였음으로 `distribution`만 설정하면 됨.
+
+```{r}
+add.distribution(strategy.st,
+                 paramset.label = "SMA",
+                 component.type = "indicator",
+                 component.label = "nFast",
+                 variable = list(n = .fastSMA),
+                 label = "nFAST")
+```
+
+* `paramset.label`: range를 적용할 함수
+* `component.type`: indicator
+* `component.label`: indicator 레이블
+* `variable` 함수에 적용할 변수
+* `label`: id
+
+```{r}
+add.distribution(strategy = strategy.st,
+                 paramset.label = "SMA",
+                 component.type = "indicator",
+                 component.label = "nSlow",
+                 variable = list(n = .slowSMA),
+                 label = "nSLOW")
+```
+
+## 7.2 Add Distribution Constraints
+
+초기 정의한 `rule`은 SMA(30) <= SMA(10)일 경우 매수하지 않는 것이다. 다시말하면 '느린 SMA <= 빠른 SMA' 일 경우 매수를 '빠른 SMA < 느린 SMA'일 경우 매도 이다.
+
+빠른 SMA와 느린 SMA의 상관관계를 다음과 같이 정의한다.
+
+```{r}
+add.distribution.constraint(strategy = strategy.st,
+                            paramset.label = "SMA",
+                            distribution.label.1 = "nFAST",
+                            distribution.label.2 = "nSLOW",
+                            operator = "<",
+                            label = "SMA.Constraint")
+```
+
+## 7.3 Running Parallel
+
+```{r}
+require(parallel)
+
+# install.packages('doMC')
+
+if (Sys.info()['sysname'] == "Windows") {
+    require(doParallel)
+    registerDoParallel(cores = datectCores())
+} else {
+    require(doMC)
+    registerDoMC(cores = detectCores())
+}
+```
+
+## 7.4 Apply Paramset
+
+```{r}
+cwd <- getwd()
+# setwd("./_data")
+results_file <- paste("results", strategy.st, "RData", sep = ".")
+if (FALSE && file.exists(results_file)) {
+    load(results_file)
+} else {
+    results <- apply.paramset(strategy.st,
+                              paramset.label = "SMA",
+                              portfolio.st = portfolio.st,
+                              account.st = account.st,
+                              nsamples = .nsamples)
+    if (checkBlotterUpdate(portfolio.st, account.st, verbose = TRUE)) {
+        save(list = "results", file = results_file)
+        save.strategy(strategy.st)
+    }
+}
+# setwd(cwd)
+```
+
+
+```{r}
+.fastSMA <- (1:30)
+.slowSMA <- (20:80)
+.nsamples <- 5
+add.distribution(strategy.st,
+                 paramset.label = "SMA",
+                 component.type = "indicator",
+                 component.label = "nFast",
+                 variable = list(n = .fastSMA),
+                 label = "nFAST")
+add.distribution(strategy.st,
+                 paramset.label = "SMA",
+                 component.type = "indicator",
+                 component.label = "nSlow",
+                 variable = list(n = .slowSMA),
+                 label = "nSLOW")
+add.distribution.constraint(strategy.st,
+                            paramset.label = "SMA",
+                            distribution.label.1 = "nFAST",
+                            distribution.label.2 = "nSLOW",
+                            operator = "<",
+                            label = "SMA.Constraint")
+library(parallel)
+
+if( Sys.info()['sysname'] == "Windows") {
+    library(doParallel)
+    registerDoParallel(cores=detectCores())
+} else {
+    library(doMC)
+    registerDoMC(cores=detectCores())
+}
+
+results <- apply.paramset(strategy.st,
+                          paramset.label = "SMA",
+                          portfolio.st = portfolio.st,
+                          account.st = account.st, 
+                          nsamples = .nsamples)
+```
+
+# Chapter 8 Stop-Loss Orders
+
+```{r}
+.fast <- 10
+.slow <- 30
+.threshold <- 0.0005
+.orderqty <- 100
+.txnfees <- -10
+.stoploss <- 3e-3 # 0.003 or 0.3%
+
+portfolio.st <- "Port.Luxor.Stop.Loss"
+account.st <- "Acct.Luxor.Stop.Loss"
+strategy.st <- "Strat.Luxor.Stop.Loss"
+
+rm.strat(portfolio.st)
+rm.strat(account.st)
+
+initPortf(name = portfolio.st,
+          symbols = symbols,
+          initDate = init_date)
+initAcct(name = account.st,
+         portfolios = portfolio.st,
+         initDate = init_date,
+         initEq = init_equity)
+initOrders(portfolio = portfolio.st,
+           symbols = symbols,
+           initDate = init_date)
+
+strategy(strategy.st, store = TRUE)
+add.indicator(strategy.st, 
+              name = "SMA",
+              arguments = list(x = quote(Cl(mktdata)),
+                               n = .fast),
+              label = "nFast")
+add.indicator(strategy.st, 
+              name = "SMA",
+              arguments = list(x = quote(Cl(mktdata)),
+                               n = .slow),
+              label = "nSlow")
+add.signal(strategy.st, 
+           name = "sigCrossover",
+           arguments = list(columns = c("nFast", "nSlow"),
+                            relationship = "gte"),
+           label = "long"
+)
+add.signal(strategy.st, 
+           name = "sigCrossover",
+           arguments = list(columns = c("nFast", "nSlow"),
+                            relationship = "lt"),
+           label = "short")
+add.rule(strategy.st, 
+         name = "ruleSignal",
+         arguments = list(sigcol = "long" , 
+                          sigval = TRUE,
+                          replace = FALSE,
+                          orderside = "long" ,
+                          ordertype = "stoplimit",
+                          prefer = "High",
+                          threshold = .threshold,
+                          TxnFees = .txnfees,
+                          orderqty = +.orderqty,
+                          osFUN = osMaxPos,
+                          orderset = "ocolong"),
+         type = "enter",
+         label = "EnterLONG")
+add.rule(strategy.st, 
+         name = "ruleSignal",
+         arguments = list(sigcol = "short", 
+                          sigval = TRUE,
+                          replace = FALSE,
+                          orderside = "short",
+                          ordertype = "stoplimit",
+                          prefer = "Low",
+                          threshold = .threshold,
+                          TxnFees = .txnfees,
+                          orderqty = -.orderqty,
+                          osFUN = osMaxPos,
+                          orderset = "ocoshort"),
+         type = "enter",
+         label = "EnterSHORT")
+add.rule(strategy.st, 
+         name = "ruleSignal",
+         arguments = list(sigcol = "short", 
+                          sigval = TRUE,
+                          replace = TRUE,
+                          orderside = "long" ,
+                          ordertype = "market",
+                          TxnFees = .txnfees,
+                          orderqty = "all",
+                          orderset = "ocolong"),
+         type = "exit",
+         label = "Exit2SHORT")
+add.rule(strategy.st, 
+         name = "ruleSignal",
+         arguments = list(sigcol = "long", 
+                          sigval = TRUE,
+                          replace = TRUE,
+                          orderside = "short",
+                          ordertype = "market",
+                          TxnFees = .txnfees,
+                          orderqty = "all",
+                          orderset = "ocoshort"),
+         type = "exit",
+         label = "Exit2LONG")
+?ruleSignal
+```
+
+## 8.3 Add Rules
+
+```{r}
+add.rule(strategy.st, 
+         name = "ruleSignal",
+         arguments = list(sigcol = "long" , 
+                          sigval = TRUE,
+                          replace = FALSE,
+                          orderside = "long",
+                          ordertype = "stoplimit",
+                          tmult = TRUE,
+                          threshold = quote(.stoploss),
+                          TxnFees = .txnfees,
+                          orderqty = "all",
+                          orderset = "ocolong"),
+         type = "chain", 
+         parent = "EnterLONG",
+         label = "StopLossLONG",
+         enabled = FALSE)
+
+add.rule(strategy.st, 
+         name = "ruleSignal",
+         arguments = list(sigcol = "short", 
+                          sigval = TRUE,
+                          replace = FALSE,
+                          orderside = "short",
+                          ordertype = "stoplimit",
+                          tmult = TRUE,
+                          threshold = quote(.stoploss),
+                          TxnFees = .txnfees,
+                          orderqty = "all",
+                          orderset = "ocoshort"),
+         type = "chain", 
+         parent = "EnterSHORT",
+         label = "StopLossSHORT",
+         enabled = FALSE)
+```
+
+**StopLossLONG** rule은 **EnterLONG**의 자식 룰이고 **ocolong** `orderset` 의 일 부분이다.
+`tmult`, `threshold` 값으로 **stoplimit** (`ordertype`) 값을 정한다.
+`.stoploss` 값이 long 주문가에 곱(`tmult`)해진다.
+
+* StopLossLONG = **fill price** - (`.stoploss` * **fill price**)
+* StopLossLONG = **134.39** - (0.003 * **134.39**)
+* StopLossLONG = $133.9868
+
+## 8.4 Add Position Limit
+
+```{r}
+# Add Position Limit
+for(symbol in symbols){
+    addPosLimit(portfolio = portfolio.st,
+                symbol = symbol,
+                timestamp = init_date,
+                maxpos = .orderqty)
+}
+
+# Enable Rules
+enable.rule(strategy.st, 
+            type = "chain", 
+            label = "StopLoss")
+
+# Apply Strategy
+# cwd <- getwd()
+# setwd("./_data/")
+results_file <- paste("results", strategy.st, "RData", sep = ".")
+if( file.exists(results_file) ) {
+    load(results_file)
+} else {
+    results <- applyStrategy(strategy.st, portfolios = portfolio.st)
+    if(checkBlotterUpdate(portfolio.st, account.st, verbose = TRUE)) {
+        save(list = "results", file = results_file)
+        save.strategy(strategy.st)
+    }
+}
+# setwd(cwd)
+```

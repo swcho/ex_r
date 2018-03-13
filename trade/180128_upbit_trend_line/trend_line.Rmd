@@ -1,0 +1,179 @@
+---
+title: "Trend Line"
+output: html_notebook
+---
+
+```{r}
+# 두 점으로부터 1차 함수를 만드는 함수
+make_line_fun <- function(x1, y1, x2, y2) {
+  a <- (y2 - y1) / (x2 - x1)
+  b <- y1 - a * x1
+  return (function(x) {
+    return (x * a) + b
+  })
+}
+```
+
+
+<https://www.quantmod.com/examples/charting/>
+<https://cran.r-project.org/web/packages/tidyquant/vignettes/TQ04-charting-with-tidyquant.html>
+<https://finviz.com/help/technical-analysis/charts-patterns.ashx>
+<https://quant.stackexchange.com/questions/1937/how-to-identify-technical-analysis-chart-patterns-algorithmically>
+<https://systematicinvestor.wordpress.com/2012/05/22/classical-technical-patterns/>
+
+
+<http://jkunst.com/highcharter/highstock.html>
+<https://www.rdocumentation.org/packages/TTR/versions/0.13-1/topics/stochastic>
+
+```{r}
+require(rjson)
+require(xts)
+
+col_name <- function(name) {
+  return (name)
+}
+
+json_file <- fromJSON(file='180128_upbit_btc_day.json')
+df <- lapply(json_file, function(x) {
+  c(x$timestamp, x$openingPrice, x$highPrice, x$lowPrice, x$tradePrice, x$candleAccTradeVolume)
+})
+df <- as.data.frame(do.call('rbind', df))
+colnames(df) <- c('time', col_name('Open'), col_name('High'), col_name('Low'), col_name('Close'), col_name('Volume'))
+df[, 1] <- as.POSIXct(df[, 1] / 1000, origin = "1970-01-01")
+xts_data <- xts(df[, -1], order.by = df[, 1])
+xts_data <- xts_data['2017-10-01/']
+
+require(TTR)
+require(quantmod)
+
+#SMA.10 <- SMA(Cl(xts_data), n = 5)
+#SMA.200 <- SMA(Cl(xts_data), n = 100)
+
+sto <- stoch(HLC(xts_data))
+sto <- cbind(sto, HLC(xts_data))
+sto <- cbind(data=sto, lag(diff(sign(diff(sto$High))), -1));
+colnames(sto)[ncol(sto)] <- 'change_high'
+sto <- cbind(data=sto, lag(diff(sign(diff(sto$Low))), -1));
+colnames(sto)[ncol(sto)] <- 'change_low'
+sto <- cbind(data=sto, lag(diff(sign(diff(sto$fastD))), -1));
+colnames(sto)[ncol(sto)] <- 'change'
+list_high <- sto[which(sto$change == -2), 'High']
+list_low <- sto[sto$change == 2, 'Low']
+
+list_high_df <- data.frame(Time = index(list_high), list_high$High)
+
+index(list_high)
+
+# plot(lm(High~Time, data = list_high_df))
+plot(list_high_df)
+list_high_df[1, 2]
+
+# Single line trials
+#fun_line <- make_line_fun(list_high_df[1, 1], list_high_df[1, 2], list_high_df[2, 1], list_high_df[2, 2])
+#line_series <- xts(x=fun_line(index(list_high)), order.by=index(list_high))
+
+# Looping
+# https://stackoverflow.com/questions/36951389/adding-a-value-to-a-previous-value-with-for-loop
+line_series_list <- list();
+line_series_list[[1]] <- xts_data
+list_high.index = as.numeric(index(list_high))
+list_high.data = as.numeric(list_high$High)
+for (i in 2:nrow(list_high)) {
+  line_fun <- make_line_fun(
+    list_high.index[i - 1],
+    list_high.data[i - 1],
+    list_high.index[i],
+    list_high.data[i]
+  )
+  print(i)
+  y <- line_fun(as.numeric(index(list_high)))
+  line_series <- xts(x = y, order.by = index(list_high))
+  line_series_list[[i]] <- line_series
+}
+
+nrow(list_high)
+length(line_series_list)
+
+
+```
+
+# Plotly
+
+<https://moderndata.plot.ly/native-support-for-candlestick-charts-in-plotly-and-r/>
+```{r}
+
+
+
+```
+
+
+
+
+# HighCharter trial failed
+
+```{r}
+require(highcharter)
+
+{
+  
+h <- highchart(type = "stock") %>%
+  hc_size(height = 800) %>%
+  hc_yAxis_multiples(
+    create_yaxis(3, height = c(2, 1, 1), turnopposite = TRUE)
+  ) %>% 
+  hc_add_series(xts_data, yAxis = 0, name = "SPY") %>% 
+  #hc_add_series(SMA.10, yAxis = 0, name = "Fast MA") %>% 
+  #hc_add_series(SMA.200, yAxis = 0, name = "Slow MA") %>%
+  hc_add_series(list_high, yAxis = 0, name = "high") %>%
+  hc_add_series(list_low, yAxis = 0, name = "low") %>%
+  #hc_add_series(line_series_list[[2]], yAxis = 0, name = "low") %>%
+  #hc_add_series(list_high) %>%
+  hc_add_series(xts_data$Volume, yAxis = 1, name = 'Volume', type = "column") %>%
+  hc_add_series(sto$fastD, yAxis = 2, name = 'sto') %>%
+  hc_add_series(sto$fastK, yAxis = 2, name = 'sto')
+
+for (i in 1:length(line_series_list)) {
+  series <- line_series_list[[i]]
+  #print(series)
+  hc_add_series(h, series, yAxis = 0, name='line_test')
+  #hc_add_series(h, line_series_list[[2]], yAxis = 0, name = "line_test")
+}
+# hc_add_series(h, line_series_list[[17]], yAxis = 0, name = "line_test")
+
+print(h)
+}
+
+{
+  highchart() %>%
+    # hc_size(height = 800) %>%
+    # hc_yAxis_multiples(create_yaxis(3, height = c(2, 1, 1), turnopposite = TRUE)) %>%
+    # hc_add_series(line_series_list[[1]])
+    hc_add_series_list(line_series_list)
+  # for (i in 1:length(line_series_list)) {
+  #   series <- line_series_list[[i]]
+  #   print(series)
+  #   hc_add_series(hc, series, yAxis = 0, name='line_test')
+  #   #hc_add_series(h, line_series_list[[2]], yAxis = 0, name = "line_test")
+  # }
+  # hc_add_series(line_series_list[[17]], yAxis = 0, name = "line_test")
+}
+```
+
+
+
+```{r}
+# https://stat.ethz.ch/R-manual/R-devel/library/graphics/html/segments.html
+x <- stats::runif(12); y <- stats::rnorm(12)
+i <- order(x, y); x <- x[i]; y <- y[i]
+plot(x, y, main = "arrows(.) and segments(.)")
+## draw arrows from point to point :
+s <- seq(length(x)-1)  # one shorter than data
+arrows(x[s], y[s], x[s+1], y[s+1], col= 1:3)
+s <- s[-length(s)]
+segments(x[s], y[s], x[s+2], y[s+2], col= 'pink')
+```
+
+```{r}
+# https://www.cut-the-knot.org/Curriculum/Calculus/StraightLine.shtml
+```
+

@@ -1,0 +1,302 @@
+---
+title: "Stop-Loss Orders"
+output: html_notebook
+---
+```{r}
+require(quantstrat)
+require(data.table)
+require(dplyr)
+require(DT)
+require(ggplot2)
+require(htmltools)
+require(htmlwidgets)
+require(knitr)
+require(lattice)
+require(pander)
+require(tidyr)
+require(webshot)
+require(blotter)
+
+
+```
+
+Luxor 전략을 가다듬어본다.
+이번에는 stop-loss 주문을 다루어 본다.
+변수들을 다음과 같이 정의한다.
+
+```{r}
+.symbols <- c(
+    "IWM",
+    "QQQ",
+    "SPY"
+)
+
+.initDate <- "2007-12-31"
+# start_date <- "2008-01-01"
+# end_date <- "2009-12-31"
+.initEq <- 1e4 # $10,000
+# adjustment <- TRUE
+
+.fast <- 10
+.slow <- 30
+.threshold <- 0.0005
+.orderqty <- 100
+.txnfees <- -10
+.stoploss <- 3e-3 # 0.0003 or 0.3%
+```
+
+초기화
+```{r}
+portfolio.st <- "Port.Luxor.Stop.Loss"
+account.st <- "Acct.Luxor.Stop.Loss"
+strategy.st <- "Strat.Luxor.Stop.Loss"
+
+rm.strat(portfolio.st)
+rm.strat(account.st)
+
+initPortf(name = portfolio.st,
+          symbols = .symbols,
+          initDate = .initDate)
+
+initAcct(name = account.st,
+         portfolios = portfolio.st,
+         initDate = .initDate,
+         initEq = .initEq)
+
+initOrders(portfolio = portfolio.st,
+           symbols = .symbols,
+           initDate = .initDate)
+
+strategy(strategy.st, store = TRUE)
+
+```
+
+## 8.1 Add Indicators
+
+```{r}
+add.indicator(strategy.st,
+              name = "SMA",
+              arguments = list(
+                  x = quote(Cl(mktdata)),
+                  n = .fast
+              ),
+              label = "nFast")
+
+add.indicator(strategy.st,
+              name = "SMA",
+              arguments = list(
+                  x = quote(Cl(mktdata)),
+                  n = .slow
+              ),
+              label = "nSlow")
+```
+
+
+## 8.2 Add Signals
+
+```{r}
+add.signal(strategy.st,
+           name = "sigCrossover",
+           arguments = list(
+               columns = c("nFast", "nSlow"),
+               relationship = "qte"
+           ),
+           label = "long")
+
+add.signal(strategy.st,
+           name = "sigCrossover",
+           arguments = list(
+               columns = c("nFast", "nSlow"),
+               relationship = "lt"
+           ),
+           lable = "short")
+```
+
+## 8.3 Add Rules
+
+지금까지는 이전에 설정했던 내용과 동일하다. 하지만 약간의 수정을 했다.
+`osFun` 주문의 크기를 정하는 함수(order size function)라는 뜻이다.
+다음과 같이 정의한다.
+> 주문 크기를 결정할 때 사용하는 함수 또는 함수의 텍스트 지시자
+
+기본값은 아무 동작도 하지 않는 `osNoOp`함수이다. 다시말해, 만일 `orderqty`가 100으로 주어지면 100을 그대로 주문한다.
+
+아래의 `EnterLong` 룰에는 `osMaxPos()` 함수를 `osFun` 함수로 지정한다.
+`osMaxPos` 는 `addPostLimit`와 함께 각 포트폴리오에서의 최대 포지션을 결정한다. 이것은 동일한 주문을 지속적으로 해도록 해준다.
+
+또한 `orderset` 파라미터를 `ocolong` 값으로 추가했다. 이는 long/short 주문을 그룹핑 해준다.
+
+```{r}
+add.rule(strategy.st,
+         name = "ruleSignal",
+         arguments = list(
+             sigcol = "long",
+             sigval = TRUE,
+             replace = FALSE,
+             orderside = "long",
+             ordertype = "stoplimit",
+             prefer = "High",
+             threshold = .threshold,
+             TxnFees = .txnfees,
+             orderqty = +.orderqty,
+             osFun = osMaxPos,
+             orderset = "ocolong"
+         ),
+         type = "enter",
+         label = "EnterLong")
+add.rule(strategy.st,
+         name = ruleSignal,
+         arguments = list(
+            sigcol = "short",
+            sigval = TRUE,
+            replace = TRUE,
+            orderside = "long",
+            ordertype = "market",
+            TxnFees = .txnfees,
+            orderqty = "all",
+            orderset = "ocolong"
+         ),
+         type = "exit",
+         label = "Exit2SHORT")
+```
+
+여기 까지 이전의 전략과 동일하다.
+이제 stop을 해본다.
+
+**StopLossLONG** 값은 long position을 설정하는 시점에 다음과 같이 결정된다.
+
+```
+StopLossLONG = 주문가 - (.stoploss * 주문가)
+```
+
+만일 134.39에 long side long 주문을 하였다면,
+
+```
+StopLossLONG = 134.39 - (0.003 * 134.39)
+StopLossLONG = 133.9868
+```
+
+만일 시장가격이 $133.9868 밑으로 떨어지게되면 **StopLossLONG** 주문이 market 주민이 되고 **Exit2SHORT** 주문을 취소한다.(OCO)
+
+**EnterSHORT**의 자식인 **StopLossSHORT** 도 이와 유사하며 단 `.stoploss`를 곱한 값을 빼는것이 아니라 더하여 값을 계산한다.
+
+```{r}
+add.rule(strategy.st,
+         name = ruleSignal,
+         arguments = list(
+            sigcol = "long",
+            sigval = TRUE,
+            replace = FALSE,
+            orderside = "long",
+            ordertype = "stoplimit",
+            tmult = TRUE,
+            threshold = quote(.stoplossA),
+            TxnFees = .txnfees,
+            orderqty = "all",
+            orderset = "ocolong"
+         ),
+         type = "chain",
+         parent = "EnterLONG",
+         label = "StopLossLONG",
+         enabled = FALSE)
+```
+
+
+```{r}
+add.rule(strategy.st,
+         name = ruleSignal,
+         arguments = list(
+            sigcol = "short",
+            sigval = TRUE,
+            replace = FALSE,
+            orderside = "short",
+            ordertype = "stoplimit",
+            prefer = "Low",
+            threshold = .threshold,
+            TxnFees = .txnfees,
+            orderqty = -.orderqty,
+            osFun = osMaxPos,
+            orderset = "ocoshort"
+         ),
+         type = "enter",
+         label = "EnterSHORT")
+add.rule(strategy.st,
+         name = "ruleSignal",
+         arguments = list(
+            sigcol = "long",
+            sigval = TRUE,
+            replace = TRUE,
+            orderside = "short",
+            ordertype = "market",
+            TxnFees = .txnfees,
+            orderqty = "all",
+            orderset = "ocoshort"
+         ),
+         type = "exit",
+         label = "Exit2LONG")
+add.rule(strategy.st,
+         name = ruleSignal,
+         arguments = list(
+            sigcol = "short",
+            sigval = TRUE,
+            replace = FALSE,
+            orderside = "short",
+            ordertype = "stoplimit",
+            tmult = TRUE,
+            threshold = quote(.stoploss),
+            TxnFees = .txnfees,
+            orderqty = "all",
+            orderset = "ocoshort"
+         ),
+         type = "chain",
+         parent = "EnterSHORT",
+         label = "StopLossSHORT",
+         enabled = FALSE)
+```
+
+
+## 8.4 Add Position Limit
+
+`osMaxPos`를 사용할 때, 각 포트폴리오에 `addPosLimit` 함수로 포지션 제한을 걸어야 한다.
+
+```{r}
+for (symbol in .symbols) {
+    addPosLimit(
+        portfolio = portfolio.st,
+        symbol = symbol,
+        timestamp = .initDate,
+        maxpos = .orderqty
+    )
+}
+```
+
+## 8.5 Enable Rules
+
+**StopLossLONG**, **StopLossSHORT** 모두 `enabled = FALSE`로 설정했다.
+
+```{r}
+enable.rule(
+    strategy = strategy.st,
+    type = "chain",
+    label = "StopLoss"
+)
+```
+
+## 8.6 Apply Strategy
+
+```{r}
+cwd <- getwd()
+# setwd("./_data/")
+results_file <- paste("results", strategy.st, "RData", sep = ".")
+if( file.exists(results_file) ) {
+    load(results_file)
+} else {
+    results <- applyStrategy(strategy.st, portfolios = portfolio.st)
+    if(checkBlotterUpdate(portfolio.st, account.st, verbose = TRUE)) {
+        save(list = "results", file = results_file)
+        save.strategy(strategy.st)
+    }
+}
+setwd(cwd)
+```
+

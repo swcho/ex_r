@@ -1,0 +1,148 @@
+---
+title: "upbit get"
+output: html_notebook
+---
+
+# Upbit 데이터 가져오기
+
+```{r}
+require(rjson)
+require(xts)
+
+col_name <- function(name) {
+  return (name)
+}
+
+json_file <- fromJSON(file='180127_upbit_btc.json')
+df <- lapply(json_file, function(x) {
+  c(x$timestamp, x$openingPrice, x$highPrice, x$lowPrice, x$tradePrice, x$candleAccTradeVolume)
+})
+df <- as.data.frame(do.call('rbind', df))
+colnames(df) <- c('time', col_name('Open'), col_name('High'), col_name('Low'), col_name('Close'), col_name('Volume'))
+df[, 1] <- as.POSIXct(df[, 1] / 1000, origin = "1970-01-01")
+xts_data <- xts(df[, -1], order.by = df[, 1])
+
+xts_data %>%
+  chartSeries(TA='addBBands();
+              addBBands(draw="p");
+              addVo();
+              addMACD()', 
+              theme="white"
+  ) 
+
+```
+
+# Using Highchart
+
+```{r}
+require(highcharter)
+
+hchart(xts_data)
+
+```
+
+# Apply ATR
+
+```{r}
+
+data_atr <- ATR(HLC(xts_data), n=20)
+
+highchart(type = "stock") %>% 
+  hc_add_series(data_atr$trueHigh) %>% 
+  hc_add_series(data_atr$trueLow) %>% 
+  hc_add_series(xts_data)
+
+```
+
+
+# Volume Profile
+
+<https://futures.io/matlab-r-project-python/29465-r-volume-profile-volume-price.html>
+
+```{r}
+vp <- function(symbol){
+  df = data.frame(Date=index(symbol), Adjusted=symbol$Close, Volume=symbol$Volume)
+  dt <- as.data.frame.table(unique(df,by=Date))
+  vol <- aggregate(cbind(dt$Volume) ~ dt$Adjusted, sum, data=dt)
+  vol <- data.frame(vol$Volume, vol$Adjusted)
+  hist(vol)
+  return(vol)
+}
+
+# dt <- as.data.frame.table(df)
+dt <- as.data.frame.table(unique(df, by=time))
+vol <- aggregate(cbind(dt$Freq.Volume) ~ dt$Freq.Close, sum, data=dt)
+vol <- data.frame(vol$`dt$Freq.Close`, vol$V1)
+plot(vol)
+# vol <- aggregate(cbind(dt$))
+```
+
+```{r}
+vp2 <- function(symbol){
+  df = data.frame(Date=index(symbol), Adjusted=symbol$Adjusted, Volume=symbol$Volume)
+  dt <- as.data.table(unique(df,by=Date))
+  vol <- aggregate(cbind(Volume) ~ Adjusted, sum, data=dt)
+  hmatrix <- as.matrix(vol$Volume)
+  par(bg=NA)
+  colnamesbarplot <- c("Adjusted","Volume")
+  options(scipen=50,digits=10)
+  barplot(hmatrix,beside=TRUE,horiz=TRUE,axes=TRUE,legend.text=TRUE,xlab="Volume",ylab="Price")
+  return(vol)
+}
+
+dt <- as.data.frame.table(unique(df, by=time))
+vol <- aggregate(cbind(dt$Freq.Volume) ~ dt$Freq.Close, sum, data=dt)
+vol <- data.frame(vol$`dt$Freq.Close`, vol$V1)
+plot(vol)
+```
+
+
+# Volume Profile 2
+
+```{r}
+
+price_low  <- min(xts_data$Low)
+price_high <- max(xts_data$High)
+
+VolNorm <- xts_data$Volume / (xts_data$High - xts_data$Low)
+
+df_low_high_nvol <- cbind(xts_data$High, xts_data$Low, VolNorm)
+
+price_seq <- seq(price_low, price_high, by=10000)
+
+sum_nvol <- function(price, df_low_high_nvol) {
+  vols <- apply(df_low_high_nvol, 1, function(item) {
+    l <- item[2]
+    h <- item[1]
+    v <- item[3]
+    if (l <= price && price <= h) {
+      # print(paste('low: ', l, 'high: ', h, 'nvol: ', v))
+      return (v)
+    }
+    return (0)
+  })
+  print(paste('price: ', price, 'sum: ', sum(vols)))
+  sum(vols)
+}
+
+sum_nvol(price_seq[10], df_low_high_nvol)
+
+sum_nvol_result <- lapply(price_seq, function(price) {
+  sum_nvol(price, df_low_high_nvol)
+})
+
+df_price_vsum <- cbind(price_seq, sum_nvol_result)
+
+plot(df_price_vsum)
+
+require(plotly)
+
+p <- plot_ly(
+  x = df_price_vsum[,1],
+  y = df_price_vsum[,2],
+  name = "SF Zoo",
+  type = "bar"
+)
+p
+```
+

@@ -1,0 +1,488 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+# NOT RUN {
+data(ttrc)
+ttrc.HLC <- ttrc[,c("High","Low","Close")]
+stochOSC <- stoch(ttrc[,c("High","Low","Close")])
+stochWPR <- WPR(ttrc[,c("High","Low","Close")])
+
+plot(tail(stochOSC[,"fastK"], 100), type="l",
+    main="Fast %K and Williams %R", ylab="",
+    ylim=range(cbind(stochOSC, stochWPR), na.rm=TRUE) )
+lines(tail(stochWPR, 100), col="blue")
+lines(tail(1-stochWPR, 100), col="red", lty="dashed")
+
+stoch2MA <- stoch( ttrc[,c("High","Low","Close")],
+    maType=list(list(SMA), list(EMA, wilder=TRUE), list(SMA)) )
+
+SMI3MA <- SMI(ttrc[,c("High","Low","Close")],
+    maType=list(list(SMA), list(EMA, wilder=TRUE), list(SMA)) )
+
+stochRSI <- stoch( RSI(ttrc[,"Close"]) )
+# }
+```
+
+
+```{r}
+diff(1:10, 2)
+diff(1:10, 2, 2)
+x <- cumsum(cumsum(1:10))
+diff(x, lag = 2)
+diff(x, differences = 2)
+
+diff(.leap.seconds)
+```
+
+
+```{r}
+# 두 점으로부터 1차 함수를 만드는 함수
+make_line_fun <- function(x1, y1, x2, y2) {
+  a <- (y2 - y1) / (x2 - x1)
+  b <- y1 - a * x1
+  return (function(x) {
+    return (x * a) + b
+  })
+}
+
+low_points <- function(x) {
+  return (lag(diff(c(sign(c(0, diff(x))), 0))) == 2)
+}
+
+high_points <- function(x) {
+  return (lag(diff(c(sign(c(0, diff(x))), 0))) == -2)
+}
+
+```
+
+
+```{r}
+# devtools::install_github("ropensci/plotly")
+
+require(quantmod)
+require(TTR)
+require(plotly)
+
+# Get data
+stock <- getSymbols("MSFT", auto.assign = F)
+# Subset to after Jan 2016
+stock <- na.omit(stock['2017-06-01/'])
+dts <- index(stock)
+df <- data.frame(stock, row.names = NULL)
+df$dates <- dts
+names(df) <- c("Open", "High", "Low", "Close", "Volume", "Adjusted", "dates")
+
+df$high_points_of_high <- high_points(df$High)
+df$low_points_of_low <- low_points(df$Low)
+
+# Stocastic
+sto <- data.frame(stoch(df[,c('High', 'Low', 'Close')], nFastK = 5, nFastD = 3, nSlowD = 3))
+sto <- data.frame(stoch(df[,c('High', 'Low', 'Close')], nFastK = 1, nFastD = 1, nSlowD = 1))
+
+```
+
+
+``` {r}
+
+
+# Color or volume bars
+barcols <- c()
+for (i in 1:length(df$dates)) {
+  
+  if (i == 1) {barcols[i] <- "#F95959"}
+  
+  if (i > 1) {
+    x <- ifelse(df$Close[i] > df$Close[i - 1], "#455D7A", "#F95959")
+    barcols[i] <- x
+  }
+}
+
+# Range selector
+rangeselectorlist = list(
+  x = 0, y = 0.9,
+  bgcolor = "#0099cc",
+  font = list(color = "white"),
+  
+  buttons = list(
+    list(count = 1, label = "reset", step = "all"),
+    list(count = 1, label = "1yr", step = "year", stepmode = "backward"),
+    list(count = 3, label = "3 mo", step = "month", stepmode = "backward"),
+    list(count = 1, label = "1 mo", step = "month", stepmode = "backward"),
+    list(step = "all")
+  )
+)
+
+plot_ly(df, type = "candlestick",
+        x = ~dates,
+        open = ~Open, high = ~High, low = ~Low, close = ~Close,
+        yaxis = "y",
+        increasing = list(line = list(color = "#455D7A")),
+        decreasing = list(line = list(color = "#F95959")),
+        name = "Price") %>%
+  add_lines(x = df$dates[df$high_points_of_high], y = df$High[df$high_points_of_high],
+            yaxis = "y",
+            line = list(width = 1, color = "#330000"),
+            inherit = F, name = "low_point") %>%
+  add_lines(x = df$dates[df$low_points_of_low], y = df$Low[df$low_points_of_low],
+            yaxis = "y",
+            line = list(width = 1, color = "#330000"),
+            inherit = F, name = "high_point") %>%
+  add_bars(data = df, x = ~dates, y = ~Volume,
+           marker = list(color = barcols),
+           yaxis = "y2", inherit = F, name = "Vol") %>%
+  add_lines(x = df$dates, y = sto$slowD,
+            yaxis = "y3",
+            line = list(width = 1, color = "#330000"),
+            inherit = F, name = "stocastic") %>%
+  add_lines(x = df$dates, y = sto$fastD,
+            yaxis = "y3",
+            line = list(width = 1, color = "#330000"),
+            inherit = F, name = "stocastic") %>%
+  layout(
+    plot_bgcolor = "rgb(250,250,250)",
+    xaxis = list(
+      title = "",
+      domain = c(0,0.95),
+      rangeslider = list(visible = F),
+      rangeselector = rangeselectorlist,
+      # https://github.com/plotly/plotly.js/issues/2155
+      # spikesnap = 'cursor',
+      spikesnap = 'data'
+    ),
+    yaxis = list(domain = c(0.42, 0.9)),
+    yaxis2 = list(domain = c(0.22, 0.40), side = "right"),
+    yaxis3 = list(domain = c(0, 0.18)),
+    showlegend = F,
+    annotations = list(
+      list(x = 0, y = 1, xanchor = "left", yanchor = "top",
+           xref = "paper", yref = "paper",
+           text = paste0("<b>Microsoft</b>"),
+           font = list(size = 30, family = "serif"),
+           showarrow = FALSE),
+      list(x = 0.8, y = 0.95, xanchor = "left", yanchor = "top",
+           xref = "paper", yref = "paper",
+           text = paste0("[", paste(range(df$dates),collapse = " / "), "]"),
+           font = list(size = 15, family = "serif"),
+           showarrow = FALSE),
+      list(x = 0, y = 0.18, xanchor = "left", yanchor = "top",
+           xref = "paper", yref = "paper",
+           text = paste0("<b>Volume</b>"),
+           font = list(size = 15, family = "serif"),
+           showarrow = FALSE)
+    )
+  )
+
+```
+
+
+```{r}
+# devtools::install_github("ropensci/plotly")
+
+require(quantmod)
+require(TTR)
+
+# Get data
+stock <- getSymbols("MSFT", auto.assign = F)
+dts <- index(stock)
+df <- data.frame(stock, row.names = NULL)
+df$dates <- dts
+names(df) <- c("Open", "High", "Low", "Close", "Volume", "Adjusted", "dates")
+
+# Subset to after Jan 2016
+df <- subset(df, "2016-01-01" < dates & !is.na(Close))
+
+# Color or volume bars
+barcols <- c()
+for (i in 1:length(df$dates)) {
+  
+  if (i == 1) {barcols[i] <- "#F95959"}
+  
+  if (i > 1) {
+    x <- ifelse(df$Close[i] > df$Close[i - 1], "#455D7A", "#F95959")
+    barcols[i] <- x
+  }
+}
+ 
+# Moving Avg line
+MA <- runMean(df$Close)
+ 
+# Range selector
+rangeselectorlist = list(
+  x = 0, y = 0.9,
+  bgcolor = "#0099cc",
+  font = list(color = "white"),
+  
+  buttons = list(
+    list(count = 1, label = "reset", step = "all"),
+    list(count = 1, label = "1yr", step = "year", stepmode = "backward"),
+    list(count = 3, label = "3 mo", step = "month", stepmode = "backward"),
+    list(count = 1, label = "1 mo", step = "month", stepmode = "backward"),
+    list(step = "all")
+  )
+)
+ 
+```
+
+# BASE CANDLESTICK CHART WITH VOLUME PANEL
+
+```{r}
+require(plotly)
+
+plot_ly(df, type = "candlestick",
+        x = ~dates,
+        open = ~Open, high = ~High, low = ~Low, close = ~Close,
+        yaxis = "y",
+        increasing = list(line = list(color = "#455D7A")),
+        decreasing = list(line = list(color = "#F95959")),
+        name = "Price",
+        height = 600, width = 1024) %>%
+  add_bars(data = df, x = ~dates, y = ~Volume,
+           marker = list(color = barcols),
+           yaxis = "y2", inherit = F, name = "Vol") %>%
+  add_lines(x = df$dates, y = MA,
+            line = list(width = 3, dash = "5px", color = "#33bbff"),
+            inherit = F, name = "Mov Avg") %>%
+  add_lines(x = df$dates[df$low_point_low], y = df$Low[df$low_point_low],
+            line = list(width = 1, color = "#330000"),
+            inherit = F, name = "low_point") %>%
+  layout(
+    plot_bgcolor = "rgb(250,250,250)",
+    xaxis = list(title = "", domain = c(0,0.95),
+                 rangeslider = list(visible = F),
+                 rangeselector = rangeselectorlist),
+    yaxis = list(domain = c(0.22, 0.9)),
+    yaxis2 = list(domain = c(0, 0.18), side = "right"),
+    showlegend = F,
+    annotations = list(
+      list(x = 0, y = 1, xanchor = "left", yanchor = "top",
+           xref = "paper", yref = "paper",
+           text = paste0("<b>Microsoft</b>"),
+           font = list(size = 30, family = "serif"),
+           showarrow = FALSE),
+      list(x = 0.8, y = 0.95, xanchor = "left", yanchor = "top",
+           xref = "paper", yref = "paper",
+           text = paste0("[", paste(range(df$dates),collapse = " / "), "]"),
+           font = list(size = 15, family = "serif"),
+           showarrow = FALSE),
+      list(x = 0, y = 0.18, xanchor = "left", yanchor = "top",
+           xref = "paper", yref = "paper",
+           text = paste0("<b>Volume</b>"),
+           font = list(size = 15, family = "serif"),
+           showarrow = FALSE)
+    )
+  )
+
+```
+
+# BASE CANDLESTICK CHART WITH BOLLINGER BANDS
+
+```{r}
+
+BB <- as.data.frame(BBands(df$Close))
+plot_ly(df, type = "candlestick",
+        x = ~dates,
+        open = ~Open, high = ~High, low = ~Low, close = ~Close,
+        yaxis = "y",
+        increasing = list(line = list(color = "#455D7A")),
+        decreasing = list(line = list(color = "#F95959")),
+        name = "Price",
+        height = 600, width = 1024) %>%
+  
+  add_bars(data = df, x = ~dates, y = ~Volume,
+           marker = list(color = barcols),
+           yaxis = "y2", inherit = F, name = "Vol") %>%
+  
+  # MA
+  add_lines(x = df$dates, y = BB$mavg,
+            line = list(width = 3, dash = "5px", color = "#33bbff"),
+            inherit = F, name = "Mov Avg") %>%
+  
+  # Upper and Lower bounds
+  add_lines(x = df$dates, y = BB$up,
+            line = list(width = 1, dash = "5px", color = "#737373"),
+            fill = "tonexty", fillcolor = "rgba(194, 240, 240, 0.2)",
+            inherit = F, name = "Bollinger") %>%
+  
+  add_lines(x = df$dates, y = BB$dn,
+            line = list(width = 1, dash = "5px", color = "#737373"),
+            fill = "tonexty", fillcolor = "rgba(194, 240, 240, 0.2)",
+            inherit = F, name = "Bollinger") %>%
+  
+  layout(
+    plot_bgcolor = "rgb(250,250,250)",
+    xaxis = list(title = "", domain = c(0,0.95),
+                 
+                 rangeslider = list(visible = F),
+                 
+                 rangeselector = rangeselectorlist),
+    yaxis = list(domain = c(0.22, 0.9)),
+    yaxis2 = list(domain = c(0, 0.18), side = "right"),
+    showlegend = F,
+    
+    annotations = list(
+      list(x = 0, y = 1, xanchor = "left", yanchor = "top",
+           xref = "paper", yref = "paper",
+           text = paste0("<b>Microsoft</b>"),
+           font = list(size = 30, family = "serif"),
+           showarrow = FALSE),
+      
+      list(x = 0.8, y = 0.95, xanchor = "left", yanchor = "top",
+           xref = "paper", yref = "paper",
+           text = paste0("[", paste(range(df$dates),collapse = " / "), "]"),
+           font = list(size = 15, family = "serif"),
+           showarrow = FALSE),
+      
+      list(x = 0, y = 0.18, xanchor = "left", yanchor = "top",
+           xref = "paper", yref = "paper",
+           text = paste0("<b>Volume</b>"),
+           font = list(size = 15, family = "serif"),
+           showarrow = FALSE)
+    )
+  )
+
+```
+
+# BASE CANDLESTICK CHART WITH CHAIKIN MONEY FLOW
+
+
+```{r}
+CKD <- CMF(df[,c("High", "Low", "Close")], volume = df$Volume)
+CKD.pos <- CKD
+CKD.pos[CKD.pos < 0] <- 0
+
+CKD.neg <- CKD
+CKD.neg[CKD.neg > 0] <- 0
+
+plot_ly(df, type = "candlestick",
+        x = ~dates,
+        open = ~Open, high = ~High, low = ~Low, close = ~Close,
+        yaxis = "y",
+        increasing = list(line = list(color = "#455D7A")),
+        decreasing = list(line = list(color = "#F95959")),
+        name = "Price",
+        height = 600, width = 1024) %>%
+  
+  # MA
+  add_lines(x = df$dates, y = BB$mavg,
+            line = list(width = 3, dash = "5px", color = "#33bbff"),
+            inherit = F, name = "Mov Avg") %>%
+  
+  # CKD
+  add_lines(x = df$dates, y = CKD.pos,
+            yaxis = "y2",
+            line = list(width = 1, color = "black"),
+            fill = "tozeroy", fillcolor = "#47d147",
+            inherit = FALSE) %>%
+  
+  add_lines(x = df$dates, y = CKD.neg,
+            yaxis = "y2",
+            line = list(width = 1, color = "black"),
+            fill = "tozeroy", fillcolor = "#ff6666",
+            inherit = FALSE) %>%
+  
+  layout(
+    plot_bgcolor = "rgb(250,250,250)",
+    xaxis = list(title = "", domain = c(0,0.95),
+                 
+                 rangeslider = list(visible = F),
+                 
+                 rangeselector = rangeselectorlist),
+    yaxis = list(domain = c(0.22, 0.9)),
+    yaxis2 = list(domain = c(0, 0.18), side = "right"),
+    showlegend = F,
+    
+    annotations = list(
+      list(x = 0, y = 1, xanchor = "left", yanchor = "top",
+           xref = "paper", yref = "paper",
+           text = paste0("<b>Microsoft</b>"),
+           font = list(size = 30, family = "serif"),
+           showarrow = FALSE),
+      
+      list(x = 0.8, y = 0.95, xanchor = "left", yanchor = "top",
+           xref = "paper", yref = "paper",
+           text = paste0("[", paste(range(df$dates),collapse = " / "), "]"),
+           font = list(size = 15, family = "serif"),
+           showarrow = FALSE),
+      
+      list(x = 0, y = 0.18, xanchor = "left", yanchor = "top",
+           xref = "paper", yref = "paper",
+           text = paste0("<b>Chaikin Money Flow</b>"),
+           font = list(size = 15, family = "serif"),
+           showarrow = FALSE)
+    )
+  )
+
+
+```
+
+# BASE CANDLESTICK CHART WITH MACD
+
+```{r}
+macd <- data.frame(TTR::MACD(df$Close, 12, 26, 9))
+macd$diff <- macd$macd - macd$signal
+
+plot_ly(df, type = "candlestick",
+        x = ~dates,
+        open = ~Open, high = ~High, low = ~Low, close = ~Close,
+        yaxis = "y",
+        increasing = list(line = list(color = "#455D7A")),
+        decreasing = list(line = list(color = "#F95959")),
+        name = "Price",
+        height = 600, width = 1024) %>%
+  
+  # MA
+  add_lines(x = df$dates, y = BB$mavg,
+            line = list(width = 3, dash = "5px", color = "#33bbff"),
+            inherit = F, name = "Mov Avg") %>%
+  
+  # MACD
+  add_lines(x = df$dates, y = macd$macd,
+            yaxis = "y2",
+            line = list(width = 1, color = "#8c8c8c"),
+            inherit = FALSE) %>%
+  
+  add_lines(x = df$dates, y = macd$signal,
+            yaxis = "y2",
+            line = list(width = 1, color = "#ff6666"),
+            inherit = FALSE) %>%
+  
+  add_bars(x = df$dates, y = macd$diff,
+           marker = list(color = "#bfbfbf"),
+           yaxis = "y2",
+           inherit = FALSE) %>%
+  
+  layout(
+    plot_bgcolor = "rgb(250,250,250)",
+    xaxis = list(title = "", domain = c(0,0.95),
+                 rangeslider = list(visible = F),
+                 rangeselector = rangeselectorlist),
+    yaxis = list(domain = c(0.22, 0.9)),
+    yaxis2 = list(domain = c(0, 0.18), side = "right"),
+    showlegend = F,
+    
+    annotations = list(
+      list(x = 0, y = 1, xanchor = "left", yanchor = "top",
+           xref = "paper", yref = "paper",
+           text = paste0("<b>Microsoft</b>"),
+           font = list(size = 30, family = "serif"),
+           showarrow = FALSE),
+      
+      list(x = 0.8, y = 0.95, xanchor = "left", yanchor = "top",
+           xref = "paper", yref = "paper",
+           text = paste0("[", paste(range(df$dates),collapse = " / "), "]"),
+           font = list(size = 15, family = "serif"),
+           showarrow = FALSE),
+      
+      list(x = 0, y = 0.18, xanchor = "left", yanchor = "top",
+           xref = "paper", yref = "paper",
+           text = paste0("<b>MACD (12, 26, 9)</b>"),
+           font = list(size = 15, family = "serif"),
+           showarrow = FALSE)
+    )
+  )
+
+```
+
