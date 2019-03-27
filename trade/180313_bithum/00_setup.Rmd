@@ -1,0 +1,103 @@
+---
+title: "Setup"
+output: html_notebook
+---
+
+## TODO
+
+* Plotly
+* ggplot?
+* draw stoch
+
+```{r}
+require(rjson)
+require(xts)
+require(quantmod)
+require(plotly)
+require(MASS)
+require(highcharter)
+
+# URL
+# @param unitTime '10M' | '01H'
+bithumb.get_url <- function(coin = 'BTC', unitTime = '10M') {
+    urlPrefix <- "https://www.bithumb.com/resources/chart/"
+    urlName <- "_xcoinTrade_"
+    urlExt <- ".json"
+    url <- paste(urlPrefix, coin, urlName, unitTime, urlExt, sep = "")
+    return (url)
+}
+
+bithumb.save_json <- function(coin = 'BTC', unitTime = '10M', filename = NULL) {
+    url <- bithumb.get_url(coin, unitTime)
+    json_text <- readLines(url)
+    if (is.null(filename)) {
+        write(json_text, file = paste(coin, unitTime, "json", sep = "."))
+    } else {
+        write(json_text, file = filename)
+    }
+}
+
+bithumb.get_df <- function(coin = 'BTC', unitTime = '10M', clean = FALSE, tag = NULL, file = NULL) {
+    # Read JSON from URL or File
+    if (is.null(file)) {
+        url <- bithumb.get_url(coin, unitTime)
+        df <- fromJSON(paste(readLines(url), collapse=""))
+    } else {
+        df <- fromJSON(file=file)
+    }
+    
+    # Make data.frame
+    df <- as.data.frame(do.call('rbind', df))
+    col_name <- function(name) {
+        if (!is.null(tag)) {
+            return(paste(tag, name, sep = '.'))
+        }
+        return(name)
+    }
+    colnames(df) <- c('time', col_name('Open'), col_name('Close'), col_name('High'), col_name('Low'), col_name('Volume'))
+    df$time <- as.POSIXct(df[,1]/1000, origin = "1970-01-01", tz = "Asia/Seoul")
+    # attr(df$time, "tzone") <- "Asia/Seoul"
+    df <- df[, c(1, 2, 4, 5, 3, 6)]
+    
+    if (clean) {
+        df <- na.omit(df)
+        df <- df[which(BASE_PRICE < df[,2] & BASE_PRICE < df[,3] & BASE_PRICE < df[,4] & BASE_PRICE < df[,5] & BASE_PRICE < df[,6]),]
+    }
+    return(df) 
+} 
+
+bithumb.as_xts <- function(df) {
+  xts_data <- xts(df[, -1], order.by = df[, 1])
+  return (xts_data)
+}
+
+mychart.quant <- function(x) {
+    chartSeries(
+        x,
+        TA='addVo();addMACD()', 
+        theme="white"
+    ) 
+}
+
+test <- function() {
+    df <- bithumb.get_df('BTC', '10M')
+    xts <- bithumb.as_xts(df)
+    xts <- xts['2018-03-05::']
+    # hcGopts <- getOption("highcharter.global")
+    # hcGopts$useUTC <- FALSE
+    # options(highcharter.global = hcGopts)
+    # hchart(xts, time)
+    # sto1 <- stoch(HLC(xts), nFastK = 10, nFastD = 6, nSlowD = 6)
+    sto1 <- stoch(HLC(xts), nFastK = 10, nFastD = 6, nSlowD = 6)
+    plot(sto1)
+    xts_hour <- to.hourly(xts)
+    sto2 <- stoch(HLC(xts_hour), nFastK = 10, nFastD = 6, nSlowD = 6)
+    plot(sto2)
+    xts_hour4 <- to.period(xts, period = "hours", k = 4)
+    sto3 <- stoch(HLC(xts_hour4), nFastK = 10, nFastD = 6, nSlowD = 6)
+    plot(sto3)
+}
+
+test()
+```
+
